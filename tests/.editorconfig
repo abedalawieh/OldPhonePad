@@ -1,0 +1,16 @@
+# Analyser relaxations that apply to test projects ONLY.
+# This file deliberately omits `root = true` so that everything in the repository
+# root .editorconfig still applies; only the rules below are overridden.
+
+[*.cs]
+
+# CA1707: "Identifiers should not contain underscores".
+#
+# The rule targets public API surface, where underscores are unidiomatic. Test
+# methods are public only because xUnit requires it - they are not an API that
+# anyone consumes. The Method_Scenario_ExpectedResult convention makes a failing
+# test name state the broken behaviour on its own, which is worth more here than
+# naming consistency with the public library.
+#
+# Scoped to tests so the production projects keep the rule enforced.
+dotnet_diagnostic.CA1707.severity = none
