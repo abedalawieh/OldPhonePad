@@ -26,8 +26,8 @@
     PackageId, description and tags.
   -->
   <PropertyGroup>
-    <Authors>Abed Alawiyeh</Authors>
-    <Copyright>Copyright (c) 2026 Abed Alawiyeh</Copyright>
+    <Authors>Abed Alawieh</Authors>
+    <Copyright>Copyright (c) 2026 Abed Alawieh</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/abedalawieh/OldPhonePad</PackageProjectUrl>
     <RepositoryUrl>https://github.com/abedalawieh/OldPhonePad.git</RepositoryUrl>
