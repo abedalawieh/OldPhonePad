@@ -34,8 +34,10 @@ builder.Services.AddSingleton<IOldPhonePadConverter, OldPhonePadConverter>();
 builder.Services.AddValidation();
 
 // Every error response in this API is a ProblemDetails document, including the ones the
-// framework produces for 404, 405 and 415.
-builder.Services.AddProblemDetails();
+// framework produces for 404, 405 and 415. Validation error keys are renamed to match the
+// JSON contract, so a client finds them under the property name it sent.
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = ValidationProblemKeyNaming.UseJsonPropertyNames);
 
 // Turns the library's rejection of invalid keypad input into a 400 instead of a 500.
 builder.Services.AddExceptionHandler<KeypadInputExceptionHandler>();

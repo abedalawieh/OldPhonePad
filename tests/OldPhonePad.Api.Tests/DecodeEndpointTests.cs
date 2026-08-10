@@ -101,7 +101,11 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
 
         JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(problem.TryGetProperty("errors", out JsonElement errors));
-        Assert.True(errors.TryGetProperty("Input", out _));
+
+        // The key must match the JSON contract the client sent, not the CLR property name, so
+        // that a client reading errors.input finds it where the docs say it will be.
+        Assert.True(errors.TryGetProperty("input", out _));
+        Assert.False(errors.TryGetProperty("Input", out _));
     }
 
     [Fact]
