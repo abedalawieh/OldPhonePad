@@ -34,4 +34,22 @@
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
+  <!--
+    Debuggability. SourceLink stamps the built assemblies with the commit they came from, so a
+    customer can step into this library's source from their own debugger instead of decompiling
+    it. Symbols ship as a .snupkg alongside each package rather than inside it, which is what
+    nuget.org expects. ContinuousIntegrationBuild is set by the build workflow, not here, because
+    it normalises paths in a way that only makes sense for a clean checkout.
+  -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
 </Project>

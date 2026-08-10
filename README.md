@@ -263,6 +263,12 @@ The demo API's own dependencies:
 | `Microsoft.OpenApi` | Pinned to `2.7.5` on purpose. ASP.NET Core 10 pulls in `2.0.0`, which carries a known high-severity advisory ([GHSA-v5pm-xwqc-g5wc](https://github.com/advisories/GHSA-v5pm-xwqc-g5wc)); `2.7.5` is the first patched release. The pin can be removed once ASP.NET Core references a patched version itself. |
 | `Scalar.AspNetCore` | Renders the OpenAPI document as an interactive page. ASP.NET Core 10 generates the document but ships no UI; Scalar consumes the built-in document directly rather than generating a second one. |
 
+### Debugging into the library
+
+The packages are built with [SourceLink](https://github.com/dotnet/sourcelink) and ship a `.snupkg`
+symbol package, so a customer can step straight into this source from their own debugger rather
+than decompiling the assembly. The built assemblies record the commit they came from.
+
 ## Known limitations
 
 - Output is upper case only, because the keypad defines only upper case letters.
