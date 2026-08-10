@@ -30,6 +30,20 @@ public sealed class KeypadApiFactory : WebApplicationFactory<Program>
 }
 
 /// <summary>
+/// Hosts the API as it runs on a developer's machine, which is what <c>dotnet run</c> produces.
+/// </summary>
+/// <remarks>
+/// ASP.NET Core reports some request failures differently in development: a body it cannot read
+/// is answered directly in production but raised as an exception here. Since the demo is run in
+/// development far more often than not, that path is worth covering.
+/// </remarks>
+public sealed class DevelopmentKeypadApiFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder.UseEnvironment(Environments.Development);
+}
+
+/// <summary>
 /// Appends a route to the very end of the pipeline that throws an exception the API has no
 /// handler for.
 /// </summary>

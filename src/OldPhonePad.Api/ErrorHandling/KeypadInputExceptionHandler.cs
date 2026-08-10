@@ -69,6 +69,16 @@ internal sealed class KeypadInputExceptionHandler(IProblemDetailsService problem
             "Invalid keypad input",
             DescribeWithoutParameterName(invalidInput)),
 
+        // The request never became a DecodeRequest: unreadable JSON, or a body that was absent
+        // when one was required. ASP.NET Core answers this itself in production but throws in
+        // development, and a malformed request is the client's mistake in either environment.
+        // The exception's own message names the endpoint's parameter and type, so a fixed
+        // description is used instead.
+        BadHttpRequestException malformedRequest => new ClientError(
+            malformedRequest.StatusCode,
+            "Malformed request",
+            "The request body could not be read. It must be a JSON object with an 'input' property."),
+
         _ => null,
     };
 
