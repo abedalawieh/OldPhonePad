@@ -1,0 +1,255 @@
+# Old Phone Pad
+
+A small, reusable .NET library that decodes old mobile phone multi-tap keypad input into text, plus
+an ASP.NET Core demo showing how a customer would expose it over HTTP.
+
+```csharp
+OldPhonePadConverter.Convert("4433555 555666#");   // "HELLO"
+```
+
+- **[docs/HOW-TO.md](docs/HOW-TO.md)** — the customer guide: install, call, run the API, read the errors.
+- **[AI-PROMPT.md](AI-PROMPT.md)** — how AI was used on this project, and what remained my own work.
+
+---
+
+## The challenge
+
+> Write an old phone key pad as a library. Assume customers want to use our lib in a REST API, so
+> write a wrapper demo to show customers, with a short How-To document.
+
+On an old phone, each key carries several letters and you pick one by pressing the key repeatedly.
+The four worked examples given in the challenge are covered by dedicated acceptance tests:
+
+| Input | Output |
+| --- | --- |
+| `33#` | `E` |
+| `227*#` | `B` |
+| `4433555 555666#` | `HELLO` |
+| `8 88777444666*664#` | `TURING` |
+
+## Architecture
+
+```
+OldPhonePad.Api  ──────▶  IronSoftware.OldPhonePad
+(HTTP boundary)           (keypad behaviour, no dependencies)
+```
+
+The library is the product; the API is a demonstration of consuming it. The library references
+nothing outside the .NET base class library — no ASP.NET Core, no HTTP, no DTOs, no logging, no
+hosting. It is equally usable from a console app, a desktop app, a background service or another
+library, and it packs as a standalone NuGet package with zero dependencies.
+
+Every keypad rule lives in the library, so calling it directly and calling it through the API
+produce exactly the same results and exactly the same failures.
+
+### Repository layout
+
+```
+src/
+  OldPhonePad/          the library: OldPhonePadConverter (public), Keypad (internal)
+  OldPhonePad.Api/      minimal API demo: contracts, one endpoint, one exception handler
+tests/
+  OldPhonePad.Tests/         80 unit tests covering keypad behaviour
+  OldPhonePad.Api.Tests/     29 integration tests over the real HTTP pipeline
+docs/HOW-TO.md          customer guide
+AI-PROMPT.md            AI usage disclosure
+global.json             pins the SDK to 10.0.204 so builds are reproducible
+Directory.Build.props   shared target framework, nullable settings and warning policy
+```
+
+## Keypad behaviour
+
+| Input | Meaning |
+| --- | --- |
+| `2`–`9` | Press a key. Repeating it moves through that key's letters: `2`=A, `22`=B, `222`=C. |
+| space | A pause. Ends the current key press run so two letters on one key can be typed: `22 2` = `BA`. |
+| `*` | Backspace. Removes the last character produced. |
+| `#` | Send. Ends the message, and must be the final character. |
+
+## Assumptions
+
+The challenge does not define every case. Rather than borrow behaviour from any particular handset,
+anything the specification leaves open is rejected explicitly, and the reasoning is recorded here.
+
+| Case | Behaviour | Why |
+| --- | --- | --- |
+| `null` input | `ArgumentNullException` | A null argument is a caller bug, not data. |
+| Empty input | `ArgumentException` | It has no send key, so the rule below already covers it. |
+| Missing `#` | `ArgumentException` | The challenge states input is terminated by `#`. Decoding an unterminated message would invent a contract that was never granted. |
+| `#` not final, e.g. `33#999` | `ArgumentException` | One call decodes one complete message. Silently discarding what follows would hide a caller's bug. |
+| `#` alone | `""` | A valid, terminated message containing no key presses. |
+| Over-pressing, e.g. `2222#` | `ArgumentException` | Wrapping around to `A` is behaviour of some handsets, not a rule in the specification. The error names the key and the press count. |
+| Key `0` | Unsupported | The specification never defines what `0` produces. Historical handsets disagreed, so it is rejected rather than guessed at. |
+| Key `1` | Unsupported | As above. |
+| Any other character | `ArgumentException` | The error names the character and its position. |
+| Backspace with nothing typed | No effect | Backspace on an empty display does nothing, as on the handset. |
+| Whitespace other than `U+0020` | `ArgumentException` | Only a space is the pause. Treating a stray tab or line ending as one would be a guess. |
+| Input longer than 1024 characters | Rejected by the **API**, not the library | A bound on work per request for a public demo endpoint. It is an HTTP concern, so the library itself has no limit. |
+
+### Backspace, precisely
+
+`*` commits any key presses still pending and then removes the last character produced.
+
+The alternative reading — that `*` discards the pending key presses — agrees with all four official
+examples, so the examples cannot tell them apart. `"2 *#"` can: the pause has already committed `A`
+before the backspace arrives, so discarding "pending" presses would leave `A` on screen and do
+nothing at all. The committed-character rule is the only one that behaves sensibly there, and it is
+covered by a dedicated test.
+
+## Getting started
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). `global.json` pins version
+`10.0.204`, so the build is identical on any machine with that SDK.
+
+```bash
+git clone https://github.com/abedalawieh/OldPhonePad.git
+cd OldPhonePad
+
+dotnet build                 # 0 warnings, 0 errors
+dotnet test                  # 109 tests
+dotnet run --project src/OldPhonePad.Api
+```
+
+Then open <http://localhost:5092/scalar/v1>.
+
+### Using the library
+
+```csharp
+using IronSoftware.OldPhonePad;
+
+string text = OldPhonePadConverter.Convert("4433555 555666#");   // "HELLO"
+```
+
+`OldPhonePadConverter.OldPhonePad(string)` is also available, matching the signature in the original
+challenge. It delegates to `Convert` — there is one implementation, not two.
+
+### Using the REST API
+
+```bash
+curl -X POST http://localhost:5092/api/keypad/decode \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"4433555 555666#"}'
+```
+
+```json
+{ "output": "HELLO" }
+```
+
+Full walkthrough, including error responses: **[docs/HOW-TO.md](docs/HOW-TO.md)**.
+
+## Error handling
+
+Invalid input is answered, never guessed at. A single `IExceptionHandler` translates the library's
+exceptions into RFC 9457 `ProblemDetails`, so no endpoint contains a `try`/`catch` and every
+endpoint added later behaves the same way.
+
+| Situation | Status | Body |
+| --- | --- | --- |
+| Successful decode | `200` | `{ "output": "HELLO" }` |
+| Invalid keypad input | `400` | `ProblemDetails`, titled *Invalid keypad input*, explaining exactly what was wrong |
+| `input` missing or too long | `400` | `ValidationProblemDetails` naming the property |
+| Unreadable request body | `400` | `ProblemDetails`, titled *Malformed request* |
+| Wrong content type | `415` | `ProblemDetails` |
+| Unknown route / wrong method | `404` / `405` | `ProblemDetails` |
+| Anything unforeseen | `500` | Generic `ProblemDetails` — no message, type name or stack trace |
+
+Errors say something useful. Sending `{"input":"2222#"}` returns:
+
+```json
+{
+  "title": "Invalid keypad input",
+  "status": 400,
+  "detail": "Key '2' was pressed 4 times by position 3, but only 3 characters are mapped to it (\"ABC\"). Presses beyond the mapped characters are not supported.",
+  "traceId": "00-1059ecd8c2be02b3e6e73e2a489ecff4-ffab1f50a1f60793-00"
+}
+```
+
+Validation sits at the boundary that owns it: the API checks request shape and size, the library
+checks keypad rules. That is not duplication — a customer using the library without the API must
+still be protected, so the library validates its own input independently.
+
+## Algorithm
+
+A single forward pass holding two pieces of state: the key currently being pressed, and how many
+times it has been pressed. A run ends when a different character is read, at which point it resolves
+to one character through the keypad map.
+
+The send key is validated up front. Once `#` is known to be the final and only terminator, the
+decoding loop never has to consider it — which is why the loop has no dead branches and no
+unreachable code.
+
+- **Time: O(n)** — one pass, no backtracking. Backspace is O(1) by shortening the `StringBuilder`.
+- **Space: O(m)** — one character of output per completed key press run, `m ≤ n`.
+
+The keypad map is a single `static readonly string[]` indexed by `key - '0'`: one source of truth,
+no per-call allocation, and the only place to change if another layout is ever needed.
+
+## Testing
+
+109 tests, all passing.
+
+**80 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+of private methods. The four official examples are dedicated tests because they are the challenge's
+contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
+category of rejected input. Exception tests assert the facts the message must carry — the offending
+key, character or position — but never whole sentences, so re-wording a message does not break them.
+
+**29 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
+binding, validation, the exception handler, JSON shaping, OpenAPI. They deliberately do not repeat
+the keypad matrix over HTTP; they prove the API is wired to the library and reports its failures
+faithfully. Most run in Production, since that is what a deployed instance does, with a small set
+in Development because ASP.NET Core reports unreadable request bodies differently there — a
+difference that hid a real bug until it was tested.
+
+## Design decisions
+
+**No `IOldPhonePadConverter`.** The converter is deterministic, stateless and dependency-free.
+Nothing substitutes it, and the API is tested through the real pipeline rather than with mocks, so
+an interface would add indirection and buy nothing. Extensibility is served by a clean seam — the
+single keypad map — not by an abstraction built before it is needed.
+
+**No custom exception type.** `ArgumentException` and `ArgumentNullException` already mean what is
+meant here, and the API maps them centrally.
+
+**Minimal API, not controllers.** The endpoint is one call to the library. A controller would add
+ceremony without adding structure.
+
+**Strict rather than forgiving.** Every ambiguous case fails loudly. For a library a customer builds
+on, a clear exception is worth more than a plausible guess, and the exception messages name the key,
+character or position so a failure can be diagnosed from a log line alone.
+
+**Deliberately not built:** authentication, a database, repositories, MediatR, CQRS, caching,
+rate limiting, a state machine class, a keypad layout provider, or a factory. None of them has a
+requirement behind it.
+
+## Dependencies
+
+The library has **no runtime dependencies**. The demo API has three, all Microsoft-published or
+widely used, all stable:
+
+| Package | Why |
+| --- | --- |
+| `Microsoft.AspNetCore.OpenApi` | Generates the OpenAPI document. Part of ASP.NET Core. |
+| `Microsoft.OpenApi` | Pinned to `2.7.5` on purpose. ASP.NET Core 10 pulls in `2.0.0`, which carries a known high-severity advisory ([GHSA-v5pm-xwqc-g5wc](https://github.com/advisories/GHSA-v5pm-xwqc-g5wc)); `2.7.5` is the first patched release. The pin can be removed once ASP.NET Core references a patched version itself. |
+| `Scalar.AspNetCore` | Renders the OpenAPI document as an interactive page. ASP.NET Core 10 generates the document but ships no UI; Scalar consumes the built-in document directly rather than generating a second one. |
+
+## Known limitations
+
+- Output is upper case only, because the keypad defines only upper case letters.
+- Keys `0` and `1` produce nothing. If a customer's specification defines them, the change is one
+  line in `Keypad.cs`.
+- The `MaxLength` validation error is keyed on `"Input"` while the JSON property is `"input"`. That
+  is standard ASP.NET Core behaviour, which reports the .NET property name.
+- The demo serves the interactive documentation in every environment because demonstrating the
+  library is its entire purpose. A production service would gate that.
+
+### If this were to grow
+
+A second keypad layout (lower case, punctuation, a different locale) is the most likely request, and
+the map in `Keypad.cs` is the seam for it. That would be the point to introduce a layout abstraction
+— when a second implementation actually exists, rather than in anticipation of one.
+
+## AI usage
+
+AI (Claude) was used on this project as an engineering assistant and reviewer. The prompt and an
+honest account of what it did and did not decide is in **[AI-PROMPT.md](AI-PROMPT.md)**.

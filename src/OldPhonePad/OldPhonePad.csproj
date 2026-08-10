@@ -13,8 +13,20 @@
   <PropertyGroup>
     <PackageId>IronSoftware.OldPhonePad</PackageId>
     <Version>1.0.0</Version>
-    <Description>Decodes old mobile phone multi-tap keypad input into text.</Description>
+    <Authors>Abed Alawiyeh</Authors>
+    <Description>
+      Decodes old mobile phone multi-tap keypad input into text. Press a key repeatedly to choose
+      one of its letters, separate letters on the same key with a space, '*' to backspace and '#'
+      to send. No dependencies.
+    </Description>
+    <PackageTags>keypad;multi-tap;t9;phone;sms;text;parser</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shown on the package listing page. -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
