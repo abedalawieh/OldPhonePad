@@ -1,5 +1,10 @@
 # Normalise line endings so the repository is identical on Windows, macOS and Linux.
-* text=auto
+#
+# Text files are stored with LF and checked out with CRLF on every platform, because
+# .editorconfig sets `end_of_line = crlf` for all files. Without the explicit `eol=crlf`
+# a Linux or macOS checkout gets LF, and `dotnet format --verify-no-changes` then fails
+# on files that are correct on Windows - which is exactly what CI caught.
+* text=auto eol=crlf
 
 *.cs        text diff=csharp
 *.csproj    text
@@ -10,6 +15,10 @@
 *.md        text
 *.yml       text
 *.editorconfig text
+
+# Shell scripts must keep LF whatever the rule above says: a CRLF shebang
+# is not executable on Linux or macOS.
+*.sh        text eol=lf
 
 # Binary assets must never be normalised.
 *.png binary
