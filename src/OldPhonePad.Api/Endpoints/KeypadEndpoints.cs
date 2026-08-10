@@ -52,11 +52,18 @@ internal static class KeypadEndpoints
     /// Invalid keypad input throws, and <c>KeypadInputExceptionHandler</c> turns that into a 400.
     /// Catching it here would repeat that translation at every endpoint.
     /// </remarks>
-    private static Ok<DecodeResponse> Decode([FromBody] DecodeRequest request)
+    /// <param name="request">The keypad message to decode.</param>
+    /// <param name="converter">
+    /// Resolved from the container. The endpoint depends on the library's contract rather than its
+    /// concrete type, so the API is wired the way a consuming application would wire it.
+    /// </param>
+    private static Ok<DecodeResponse> Decode(
+        [FromBody] DecodeRequest request,
+        IOldPhonePadConverter converter)
     {
         // Input is non-null here: the [Required] attribute on the contract rejects a missing
         // property before the endpoint runs.
-        string output = OldPhonePadConverter.Convert(request.Input!);
+        string output = converter.Convert(request.Input!);
 
         return TypedResults.Ok(new DecodeResponse(output));
     }

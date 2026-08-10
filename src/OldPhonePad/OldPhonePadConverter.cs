@@ -14,10 +14,12 @@ namespace IronSoftware.OldPhonePad;
 /// written as a space. <c>*</c> is backspace and <c>#</c> sends the message.
 /// </para>
 /// <para>
-/// This type is stateless and thread-safe.
+/// This type is stateless and thread-safe. Callers that do not use dependency injection can call
+/// the static <see cref="Convert(string)"/> directly; those that do can resolve
+/// <see cref="IOldPhonePadConverter"/> and register this type as a singleton.
 /// </para>
 /// </remarks>
-public static class OldPhonePadConverter
+public sealed class OldPhonePadConverter : IOldPhonePadConverter
 {
     /// <summary>The send key: ends the message.</summary>
     private const char SendKey = '#';
@@ -162,6 +164,20 @@ public static class OldPhonePadConverter
     /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="input"/> is not a valid message.</exception>
     public static string OldPhonePad(string input) => Convert(input);
+
+    /// <summary>
+    /// Implements <see cref="IOldPhonePadConverter.Convert(string)"/> for callers that resolve the
+    /// converter from a dependency injection container.
+    /// </summary>
+    /// <remarks>
+    /// The implementation is explicit because a type cannot declare both a static and an instance
+    /// method with the same signature. Making it explicit keeps <see cref="Convert(string)"/> the
+    /// one way to call this type directly, while still satisfying the interface. It delegates, so
+    /// there is exactly one implementation of the algorithm however it is reached.
+    /// </remarks>
+    /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
+    /// <returns>The decoded text in upper case.</returns>
+    string IOldPhonePadConverter.Convert(string input) => Convert(input);
 
     /// <summary>
     /// Resolves a completed run of key presses to the character it selects and appends it.
