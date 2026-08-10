@@ -13,7 +13,6 @@
   <PropertyGroup>
     <PackageId>IronSoftware.OldPhonePad</PackageId>
     <Version>1.0.0</Version>
-    <Authors>Abed Alawiyeh</Authors>
     <Description>
       Decodes old mobile phone multi-tap keypad input into text. Press a key repeatedly to choose
       one of its letters, separate letters on the same key with a space, '*' to backspace and '#'

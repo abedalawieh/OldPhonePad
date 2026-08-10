@@ -277,6 +277,11 @@ A second keypad layout (lower case, punctuation, a different locale) is the most
 the map in `Keypad.cs` is the seam for it. That would be the point to introduce a layout abstraction
 — when a second implementation actually exists, rather than in anticipation of one.
 
+## Licence
+
+MIT — see [LICENSE](LICENSE). Both packages carry the `MIT` licence expression, so a consumer's
+licence tooling can resolve them without reading the repository.
+
 ## AI usage
 
 AI (Claude) was used on this project as an engineering assistant and reviewer. The prompt and an

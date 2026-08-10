@@ -20,4 +20,18 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
   </PropertyGroup>
 
+  <!--
+    Package identity shared by both shippable packages. Kept here so the licence, copyright
+    and repository links cannot drift apart between them. Each project still declares its own
+    PackageId, description and tags.
+  -->
+  <PropertyGroup>
+    <Authors>Abed Alawiyeh</Authors>
+    <Copyright>Copyright (c) 2026 Abed Alawiyeh</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/abedalawieh/OldPhonePad</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/abedalawieh/OldPhonePad.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
 </Project>
