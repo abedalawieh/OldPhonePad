@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace IronSoftware.OldPhonePad;
@@ -81,9 +82,11 @@ public static class OldPhonePadConverter
                 if (pressCount > pressedCharacters.Length)
                 {
                     throw new ArgumentException(
-                        $"Key '{character}' was pressed {pressCount} times by position {index}, but only " +
-                        $"{pressedCharacters.Length} characters are mapped to it (\"{pressedCharacters}\"). " +
-                        "Presses beyond the mapped characters are not supported.",
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"Key '{character}' was pressed {pressCount} times by position {index}, but only " +
+                            $"{pressedCharacters.Length} characters are mapped to it (\"{pressedCharacters}\"). " +
+                            $"Presses beyond the mapped characters are not supported."),
                         nameof(input));
                 }
 
@@ -115,17 +118,22 @@ public static class OldPhonePadConverter
                     if (!Keypad.IsKey(character))
                     {
                         throw new ArgumentException(
-                            $"Unsupported character '{character}' at position {index}. Valid input consists of " +
-                            $"the digits 2-9, a space for a pause, '{BackspaceKey}' for backspace and a " +
-                            $"trailing '{SendKey}' to send.",
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"Unsupported character '{character}' at position {index}. Valid input consists " +
+                                $"of the digits 2-9, a space for a pause, '{BackspaceKey}' for backspace and a " +
+                                $"trailing '{SendKey}' to send."),
                             nameof(input));
                     }
 
                     if (!Keypad.IsMappedKey(character))
                     {
                         throw new ArgumentException(
-                            $"Key '{character}' at position {index} has no characters mapped to it and is not " +
-                            "supported. The specification does not define the characters produced by keys 0 and 1.",
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"Key '{character}' at position {index} has no characters mapped to it and is " +
+                                $"not supported. The specification does not define the characters produced by " +
+                                $"keys 0 and 1."),
                             nameof(input));
                     }
 
@@ -190,16 +198,20 @@ public static class OldPhonePadConverter
         if (sendKeyIndex < 0)
         {
             throw new ArgumentException(
-                $"Input must be terminated with the send key '{SendKey}'. Received \"{input}\".",
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Input must be terminated with the send key '{SendKey}'. Received \"{input}\"."),
                 nameof(input));
         }
 
         if (sendKeyIndex != input.Length - 1)
         {
             throw new ArgumentException(
-                $"The send key '{SendKey}' must be the final character because it ends the message, but it was " +
-                $"found at position {sendKeyIndex} of {input.Length}. A single call decodes exactly one " +
-                "complete message.",
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"The send key '{SendKey}' must be the final character because it ends the message, but it " +
+                    $"was found at position {sendKeyIndex} of {input.Length}. A single call decodes exactly one " +
+                    $"complete message."),
                 nameof(input));
         }
     }
