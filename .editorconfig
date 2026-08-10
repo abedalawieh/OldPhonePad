@@ -39,5 +39,8 @@ dotnet_naming_style.pascal_case.capitalization = pascal_case
 # Prefer readonly where possible
 dotnet_style_readonly_field = true:warning
 
-# Unused usings are an error under TreatWarningsAsErrors
-dotnet_diagnostic.IDE0005.severity = warning
+# IDE0005 (remove unnecessary usings) is intentionally left at its default severity.
+# Enforcing it during the build requires GenerateDocumentationFile in every project
+# (see https://github.com/dotnet/roslyn/issues/41640), which would mean generating
+# XML documentation for the test and API projects purely to satisfy an analyser.
+# The IDE still reports unused usings while editing.

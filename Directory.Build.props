@@ -7,18 +7,17 @@
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- Quality gate: warnings must not accumulate. -->
+    <!--
+      Quality gate. Warnings fail the build so they cannot accumulate, the
+      .editorconfig style rules are enforced by the compiler rather than only in
+      the IDE, and the recommended analyser set is opted into explicitly.
+    -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-
-    <!-- Deterministic, reproducible builds. -->
-    <Deterministic>true</Deterministic>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
 </Project>
