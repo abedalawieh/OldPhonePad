@@ -1,0 +1,20 @@
+# Normalise line endings so the repository is identical on Windows, macOS and Linux.
+* text=auto
+
+*.cs        text diff=csharp
+*.csproj    text
+*.sln       text eol=crlf
+*.props     text
+*.targets   text
+*.json      text
+*.md        text
+*.yml       text
+*.editorconfig text
+
+# Binary assets must never be normalised.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.dll binary
+*.snk binary

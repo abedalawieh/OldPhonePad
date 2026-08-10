@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- TargetFramework, Nullable and warning policy are inherited from Directory.Build.props. -->
+  <PropertyGroup>
+    <RootNamespace>IronSoftware.OldPhonePad</RootNamespace>
+    <AssemblyName>IronSoftware.OldPhonePad</AssemblyName>
+
+    <!-- Public members are documented; missing XML docs surface as build warnings. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Package metadata: the library is designed to be shippable as a standalone NuGet package. -->
+  <PropertyGroup>
+    <PackageId>IronSoftware.OldPhonePad</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Decodes old mobile phone multi-tap keypad input into text.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+</Project>
