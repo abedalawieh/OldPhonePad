@@ -49,6 +49,11 @@ app.UseExceptionHandler();
 // ProblemDetails body, so clients can parse every failure the same way.
 app.UseStatusCodePages();
 
+// The demo page at the site root. It is a single static file with no build step and no
+// dependencies, served by this application so the demo deploys as one unit.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -63,9 +68,6 @@ app.MapScalarApiReference(options => options
     .WithTheme(ScalarTheme.BluePlanet));
 
 app.MapKeypadEndpoints();
-
-// Send customers to the interactive reference rather than showing them a 404 at the root.
-app.MapGet("/", () => Results.Redirect("/scalar/v1")).ExcludeFromDescription();
 
 await app.RunAsync();
 

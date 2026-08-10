@@ -40,17 +40,15 @@ public sealed class OpenApiTests(KeypadApiFactory factory) : IClassFixture<Keypa
     }
 
     [Fact]
-    public async Task RootUrl_SendsVisitorsToTheInteractiveReference()
+    public async Task InteractiveReference_IsLinkedFromTheDemoPage()
     {
-        using HttpClient client = factory.CreateClient(
-            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-            {
-                AllowAutoRedirect = false,
-            });
+        using HttpClient client = factory.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/");
+        // The root used to redirect here. It now serves the demo page, so the reference has to be
+        // reachable from it - otherwise the engineer-facing documentation becomes unlisted.
+        string html = await client.GetStringAsync("/");
 
-        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
-        Assert.Equal("/scalar/v1", response.Headers.Location?.ToString());
+        Assert.Contains("/scalar/v1", html, StringComparison.Ordinal);
+        Assert.Contains("/openapi/v1.json", html, StringComparison.Ordinal);
     }
 }

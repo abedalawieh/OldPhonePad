@@ -57,10 +57,11 @@ produce exactly the same results and exactly the same failures.
 src/
   OldPhonePad/                       the library: OldPhonePadConverter (public), Keypad (internal)
   OldPhonePad.DependencyInjection/   optional: AddOldPhonePad() for DI consumers
-  OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler
+  OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler,
+                                     and a self-contained test page at the site root
 tests/
   OldPhonePad.Tests/        106 unit tests covering keypad behaviour and registration
-  OldPhonePad.Api.Tests/     30 integration tests over the real HTTP pipeline
+  OldPhonePad.Api.Tests/     34 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
 .github/workflows/      CI: format, build, test and pack on every push
@@ -121,7 +122,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 136 tests
+dotnet test                  # 140 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -201,7 +202,7 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-136 tests, all passing.
+140 tests, all passing.
 
 **106 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
@@ -209,7 +210,7 @@ contract. Beyond those: every key, every press count, pauses, backspace in each 
 category of rejected input. Exception tests assert the facts the message must carry — the offending
 key, character or position — but never whole sentences, so re-wording a message does not break them.
 
-**30 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
+**34 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
 binding, validation, the exception handler, JSON shaping, OpenAPI. They deliberately do not repeat
 the keypad matrix over HTTP; they prove the API is wired to the library and reports its failures
 faithfully. Most run in Production, since that is what a deployed instance does, with a small set

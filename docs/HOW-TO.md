@@ -157,6 +157,11 @@ dotnet run --project src/OldPhonePad.Api
 Now listening on: http://localhost:5092
 ```
 
+Then open **<http://localhost:5092/>**. There is an interactive test page there: click the keypad
+or pick one of the challenge examples, and it calls the API and shows the decoded text, the status
+code and the raw request and response. Nothing to install - it is a single static file served by
+the API itself.
+
 ## Call the endpoint
 
 `POST /api/keypad/decode`
