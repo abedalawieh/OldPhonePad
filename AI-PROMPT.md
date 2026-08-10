@@ -43,8 +43,12 @@ Every behavioural and architectural decision in this repository is mine. The one
   I did not want to add an abstraction just to display a pattern. I changed my mind for a different
   reason: an application consuming this library should be able to bind to a contract and resolve it
   from a container. The static method is still there for callers who want neither.
-- **The library stays free of ASP.NET Core, logging and hosting**, so it is genuinely reusable. The
-  DI registration lives in the demo API, not in the library, so the package keeps zero dependencies.
+- **The library stays free of ASP.NET Core, logging and hosting**, so it is genuinely reusable.
+  When I wanted an `AddOldPhonePad()` helper, I did not put it in the library: a registration
+  extension needs the dependency injection abstractions, and that would hand a dependency to every
+  consumer, including those with no container. It ships as a separate optional package instead,
+  which is how Serilog and Polly solve the same problem. The keypad package still has an empty
+  dependency list.
 - **Strict validation over lenient guessing**, wherever the specification is genuinely silent.
 
 The guiding rule I set was: requirements first, documented assumptions second, historical handset

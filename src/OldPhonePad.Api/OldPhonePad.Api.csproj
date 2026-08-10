@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OldPhonePad\OldPhonePad.csproj" />
+    <ProjectReference Include="..\OldPhonePad.DependencyInjection\OldPhonePad.DependencyInjection.csproj" />
   </ItemGroup>
 
 </Project>

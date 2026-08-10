@@ -31,14 +31,20 @@ The four worked examples given in the challenge are covered by dedicated accepta
 ## Architecture
 
 ```
-OldPhonePad.Api  ──────▶  IronSoftware.OldPhonePad
-(HTTP boundary)           (keypad behaviour, no dependencies)
+OldPhonePad.Api  ──▶  IronSoftware.OldPhonePad.DependencyInjection  ──▶  IronSoftware.OldPhonePad
+(HTTP boundary)       (optional: AddOldPhonePad())                       (keypad behaviour,
+                                                                          no dependencies)
 ```
 
 The library is the product; the API is a demonstration of consuming it. The library references
 nothing outside the .NET base class library — no ASP.NET Core, no HTTP, no DTOs, no logging, no
 hosting. It is equally usable from a console app, a desktop app, a background service or another
 library, and it packs as a standalone NuGet package with zero dependencies.
+
+`AddOldPhonePad()` is shipped as a **separate, optional package**. A registration helper needs the
+dependency injection abstractions, and putting them in the core package would hand that dependency
+to every consumer — including the console app that has no container at all. Splitting it is the
+pattern Serilog, Polly and FluentValidation use for the same reason.
 
 Every keypad rule lives in the library, so calling it directly and calling it through the API
 produce exactly the same results and exactly the same failures.
@@ -47,10 +53,11 @@ produce exactly the same results and exactly the same failures.
 
 ```
 src/
-  OldPhonePad/          the library: OldPhonePadConverter (public), Keypad (internal)
-  OldPhonePad.Api/      minimal API demo: contracts, one endpoint, one exception handler
+  OldPhonePad/                       the library: OldPhonePadConverter (public), Keypad (internal)
+  OldPhonePad.DependencyInjection/   optional: AddOldPhonePad() for DI consumers
+  OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler
 tests/
-  OldPhonePad.Tests/        101 unit tests covering keypad behaviour
+  OldPhonePad.Tests/        106 unit tests covering keypad behaviour and registration
   OldPhonePad.Api.Tests/     30 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
@@ -111,7 +118,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 131 tests
+dotnet test                  # 136 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -191,9 +198,9 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-131 tests, all passing.
+136 tests, all passing.
 
-**101 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+**106 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
 contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
 category of rejected input. Exception tests assert the facts the message must carry — the offending
@@ -207,6 +214,13 @@ in Development because ASP.NET Core reports unreadable request bodies differentl
 difference that hid a real bug until it was tested.
 
 ## Design decisions
+
+**The DI helper ships separately.** `AddOldPhonePad()` uses `TryAddSingleton`, so calling it twice
+registers one converter and an application that has already registered its own — a decorator adding
+logging or caching, say — keeps it. A library should add what is missing rather than override a
+decision its consumer has already made. The extension is declared in the
+`Microsoft.Extensions.DependencyInjection` namespace, the convention ASP.NET Core itself follows, so
+the call needs no extra `using`.
 
 **`IOldPhonePadConverter` for consumers, a static method for convenience.** The decoding never
 varies, so the abstraction is not there to let the library swap implementations — it is there so a
@@ -232,8 +246,16 @@ requirement behind it.
 
 ## Dependencies
 
-The library has **no runtime dependencies**. The demo API has three, all Microsoft-published or
-widely used, all stable:
+The keypad library has **no runtime dependencies at all** — the packed `.nuspec` carries an empty
+dependency group. The optional DI package has exactly two, and the demo API three, all
+Microsoft-published or widely used, all stable:
+
+| Package | Depends on |
+| --- | --- |
+| `IronSoftware.OldPhonePad` | *nothing* |
+| `IronSoftware.OldPhonePad.DependencyInjection` | the core package, and `Microsoft.Extensions.DependencyInjection.Abstractions` |
+
+The demo API's own dependencies:
 
 | Package | Why |
 | --- | --- |

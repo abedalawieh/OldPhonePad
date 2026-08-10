@@ -1,4 +1,3 @@
-using IronSoftware.OldPhonePad;
 using Microsoft.OpenApi;
 using OldPhonePad.Api.Endpoints;
 using OldPhonePad.Api.ErrorHandling;
@@ -23,11 +22,10 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     }));
 
-// The keypad library, resolved by its contract. Registered here rather than by an extension
-// method inside the library, which would make the library depend on the DI abstractions and
-// cost it the "no dependencies" property that makes it reusable anywhere.
-// A singleton is safe: the converter is stateless.
-builder.Services.AddSingleton<IOldPhonePadConverter, OldPhonePadConverter>();
+// The keypad library. AddOldPhonePad comes from the companion package, which carries the
+// dependency injection abstractions so the keypad library itself can keep none. Consumers
+// with no container reference only the keypad package and call it directly.
+builder.Services.AddOldPhonePad();
 
 // Validates request contracts against their data annotations before an endpoint runs,
 // producing a ValidationProblemDetails response naming the offending property.

@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldPhonePad.Api", "src\OldP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldPhonePad.Api.Tests", "tests\OldPhonePad.Api.Tests\OldPhonePad.Api.Tests.csproj", "{6E040B52-93A5-4693-957B-3A2D5D706C50}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldPhonePad.DependencyInjection", "src\OldPhonePad.DependencyInjection\OldPhonePad.DependencyInjection.csproj", "{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,6 +75,18 @@ Global
 		{6E040B52-93A5-4693-957B-3A2D5D706C50}.Release|x64.Build.0 = Release|Any CPU
 		{6E040B52-93A5-4693-957B-3A2D5D706C50}.Release|x86.ActiveCfg = Release|Any CPU
 		{6E040B52-93A5-4693-957B-3A2D5D706C50}.Release|x86.Build.0 = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|x64.Build.0 = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Debug|x86.Build.0 = Debug|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|x64.ActiveCfg = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|x64.Build.0 = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|x86.ActiveCfg = Release|Any CPU
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -82,5 +96,6 @@ Global
 		{D90A1F8F-2FF5-4579-944F-1CB92160BD3A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{84106269-3320-4B75-9E42-1E813677A00A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{6E040B52-93A5-4693-957B-3A2D5D706C50} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{7D4BE445-635E-4BDC-80EC-E98FDE748BF2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

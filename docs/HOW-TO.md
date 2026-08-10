@@ -85,11 +85,19 @@ catch (ArgumentException ex)
 The type is stateless and thread-safe, and the static method needs nothing constructed or
 configured.
 
-If your application uses dependency injection, register the converter by its contract instead and
-inject it. It is stateless, so a singleton is safe:
+### If your application uses dependency injection
+
+Install the optional companion package instead. It brings the keypad library with it, so this is
+the only package you need to add:
+
+```bash
+dotnet add <your-project> package IronSoftware.OldPhonePad.DependencyInjection
+```
+
+Then register the converter and inject it anywhere:
 
 ```csharp
-builder.Services.AddSingleton<IOldPhonePadConverter, OldPhonePadConverter>();
+builder.Services.AddOldPhonePad();
 ```
 
 ```csharp
@@ -99,7 +107,15 @@ public sealed class MessageService(IOldPhonePadConverter converter)
 }
 ```
 
-Both routes run the same code, so pick whichever suits your application.
+`AddOldPhonePad()` needs no `using` — it is declared in the `Microsoft.Extensions.DependencyInjection`
+namespace, the same convention ASP.NET Core uses for `AddHttpContextAccessor()`. You only need
+`using IronSoftware.OldPhonePad;` where you name `IOldPhonePadConverter`.
+
+It is safe to call twice, and if you have already registered your own `IOldPhonePadConverter` — a
+wrapper that adds logging, say — yours is kept.
+
+Both routes run the same code, so pick whichever suits your application. If you do not use a
+container, ignore this package entirely: the keypad library on its own has no dependencies.
 
 If you have existing code written against the original challenge signature, that also works and runs
 the same implementation:
