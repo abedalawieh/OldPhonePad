@@ -1,5 +1,7 @@
 # Old Phone Pad
 
+[![build](https://github.com/abedalawieh/OldPhonePad/actions/workflows/build.yml/badge.svg)](https://github.com/abedalawieh/OldPhonePad/actions/workflows/build.yml)
+
 A small, reusable .NET library that decodes old mobile phone multi-tap keypad input into text, plus
 an ASP.NET Core demo showing how a customer would expose it over HTTP.
 
@@ -61,6 +63,7 @@ tests/
   OldPhonePad.Api.Tests/     30 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
+.github/workflows/      CI: format, build, test and pack on every push
 global.json             pins the SDK to 10.0.204 so builds are reproducible
 Directory.Build.props   shared target framework, nullable settings and warning policy
 ```
