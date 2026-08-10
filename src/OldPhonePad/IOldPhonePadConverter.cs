@@ -26,7 +26,7 @@ public interface IOldPhonePadConverter
     /// </summary>
     /// <param name="input">
     /// The key presses to decode, terminated by the send key <c>#</c>. Valid characters are the
-    /// digits <c>2</c>-<c>9</c>, a space for a pause, <c>*</c> for backspace and a single trailing <c>#</c>.
+    /// digits <c>0</c>-<c>9</c>, a space for a pause, <c>*</c> for backspace and a single trailing <c>#</c>.
     /// </param>
     /// <returns>
     /// The decoded text in upper case. Returns an empty string when the input is only the send key.
@@ -34,9 +34,8 @@ public interface IOldPhonePadConverter
     /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="input"/> is not a valid message. This covers input that is not terminated by
-    /// <c>#</c>, input containing characters after the <c>#</c>, unsupported characters, and a key
-    /// pressed more times than it has characters mapped to it. The exception message identifies the
-    /// offending key or character and its position.
+    /// <c>#</c>, input containing characters after the <c>#</c>, and characters that are not on the
+    /// keypad. The exception message identifies the offending character and its position.
     /// </exception>
     string Convert(string input);
 }

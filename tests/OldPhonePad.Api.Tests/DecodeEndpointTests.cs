@@ -54,9 +54,8 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
     [Theory]
     [InlineData("33", "input that never sends")]
     [InlineData("33#999", "content after the send key")]
-    [InlineData("0#", "a key with no characters mapped to it")]
-    [InlineData("2222#", "more presses than the key has characters")]
     [InlineData("2A#", "a character that is not on the keypad")]
+    [InlineData("2\t2#", "whitespace that is not the keypad pause")]
     public async Task Decode_WithInvalidKeypadInput_Returns400ProblemDetailsExplainingWhy(
         string input,
         string reason)

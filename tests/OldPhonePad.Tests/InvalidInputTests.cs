@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace IronSoftware.OldPhonePad.Tests;
 
 /// <summary>
@@ -45,22 +43,6 @@ public class InvalidInputTests
     }
 
     [Theory]
-    [InlineData("0#", '0')]
-    [InlineData("1#", '1')]
-    [InlineData("4433550 555666#", '0')]
-    public void Convert_WithKeyThatHasNoMappedCharacters_ThrowsArgumentExceptionNamingTheKey(
-        string input,
-        char unsupportedKey)
-    {
-        // The specification does not define what keys 0 and 1 produce, so they are rejected
-        // rather than assigned characters borrowed from a particular handset.
-        var exception = Assert.Throws<ArgumentException>(() => OldPhonePadConverter.Convert(input));
-
-        Assert.Contains(unsupportedKey.ToString(), exception.Message, StringComparison.Ordinal);
-        Assert.Equal("input", exception.ParamName);
-    }
-
-    [Theory]
     [InlineData("2A#", "A")]      // letter
     [InlineData("2a#", "a")]      // lower case letter
     [InlineData("2-#", "-")]      // punctuation
@@ -89,29 +71,10 @@ public class InvalidInputTests
     }
 
     [Theory]
-    [InlineData("2222#", '2', 4)]        // a three character key pressed four times
-    [InlineData("77777#", '7', 5)]       // a four character key pressed five times
-    [InlineData("22 2222#", '2', 4)]     // over-pressed after a valid run
-    [InlineData("2222*#", '2', 4)]       // rejected even though a backspace follows
-    public void Convert_WithMorePressesThanTheKeyHasCharacters_ThrowsArgumentExceptionNamingTheKey(
-        string input,
-        char key,
-        int pressCount)
-    {
-        // Cycling back to the first character is behaviour of particular handsets, not
-        // something the specification defines, so excess presses are rejected instead.
-        var exception = Assert.Throws<ArgumentException>(() => OldPhonePadConverter.Convert(input));
-
-        Assert.Contains(key.ToString(), exception.Message, StringComparison.Ordinal);
-        Assert.Contains(pressCount.ToString(CultureInfo.InvariantCulture), exception.Message, StringComparison.Ordinal);
-        Assert.Equal("input", exception.ParamName);
-    }
-
-    [Theory]
     [InlineData("2A#")]
-    [InlineData("2222#")]
+    [InlineData("2\t2#")]
     [InlineData("33")]
-    [InlineData("0#")]
+    [InlineData("33#999")]
     public void Convert_WithInvalidInput_AlwaysNamesTheInputParameter(string input)
     {
         // Callers should be able to attribute the failure to the argument they passed.

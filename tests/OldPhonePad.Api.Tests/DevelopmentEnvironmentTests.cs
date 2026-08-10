@@ -68,7 +68,7 @@ public sealed class DevelopmentEnvironmentTests(DevelopmentKeypadApiFactory fact
     {
         using HttpClient client = factory.CreateClient();
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync(DecodeUrl, new { input = "2222#" });
+        using HttpResponseMessage response = await client.PostAsJsonAsync(DecodeUrl, new { input = "2A#" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 

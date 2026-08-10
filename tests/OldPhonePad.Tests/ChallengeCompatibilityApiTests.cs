@@ -39,8 +39,8 @@ public class ChallengeCompatibilityApiTests
     }
 
     [Theory]
-    [InlineData("2222#")]
-    [InlineData("0#")]
+    [InlineData("2A#")]
+    [InlineData("2\t2#")]
     [InlineData("33")]
     [InlineData("33#999")]
     public void OldPhonePad_WithInvalidInput_ThrowsTheSameExceptionAsConvert(string input)

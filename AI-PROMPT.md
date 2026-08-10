@@ -25,24 +25,31 @@ decision contract I issued before implementation began.
 
 Every behavioural and architectural decision in this repository is mine. The ones that mattered:
 
-- **Over-pressing a key is an error, not a wrap-around.** `"2222#"` is rejected rather than decoded
-  as `A`. I was advised to implement cycling on the grounds that real handsets did it. I rejected
-  that: the challenge defines multi-tap selection but never states that excess presses cycle, and
-  borrowing behaviour from hardware is an assumption, not a requirement.
-- **Keys `0` and `1` are unsupported.** I was offered a historical mapping for key `1`. I turned it
-  down for the same reason — different handsets used different mappings, and the specification is
-  silent. The same standard then applied to key `0`, which I asked to have flagged rather than
-  quietly implemented.
+- **The specification is the authority, and I checked it against the source document.** This is the
+  decision I am proudest of and the one I got wrong first. Working from a text transcription of the
+  challenge, I ruled that the specification said nothing about keys `0` and `1` or about what
+  happens when a key is over-pressed, and I rejected all three as undefined. When I went back to
+  the original PDF, the keypad illustration defines `0` as a space and `1` as `&'(`, and the prompt
+  itself says presses "cycle through the letters". My reasoning had been sound; my source had not
+  been. I changed the implementation, the tests and this document to match the specification.
+  The lesson I take from it: a requirement you have only read second-hand is not a requirement you
+  have read.
 - **`#` must be the final character and appear once.** `"33#999"` is rejected instead of truncated,
-  because one call represents one complete message and silent truncation hides caller bugs.
-- **No `IOldPhonePadConverter` interface.** Adding an interface with a single implementation and no
-  substitution scenario, purely to demonstrate dependency injection, would be ceremony rather than
-  design.
-- **The library stays free of ASP.NET Core, logging and hosting**, so it is genuinely reusable.
-- **Strict validation over lenient guessing**, throughout.
+  because one call represents one complete message and silent truncation hides caller bugs. The
+  specification guarantees a trailing `#`; it says nothing about content after one, so this is a
+  documented assumption rather than a rule I was given.
+- **`IOldPhonePadConverter` exists for the consumer, not the library.** My first instinct was to
+  leave the converter static — decoding never varies, so an interface buys the library nothing, and
+  I did not want to add an abstraction just to display a pattern. I changed my mind for a different
+  reason: an application consuming this library should be able to bind to a contract and resolve it
+  from a container. The static method is still there for callers who want neither.
+- **The library stays free of ASP.NET Core, logging and hosting**, so it is genuinely reusable. The
+  DI registration lives in the demo API, not in the library, so the package keeps zero dependencies.
+- **Strict validation over lenient guessing**, wherever the specification is genuinely silent.
 
 The guiding rule I set was: requirements first, documented assumptions second, historical handset
-behaviour only where explicitly chosen and written down.
+behaviour only where explicitly chosen and written down. Applying that rule honestly is what forced
+the correction above.
 
 ## What Claude did
 
@@ -51,6 +58,8 @@ behaviour only where explicitly chosen and written down.
 - Wrote implementation, test and documentation code to the decisions I had already made.
 - Reviewed code for cohesion, naming, duplication and unnecessary abstraction.
 - Identified edge cases I then chose behaviour for.
+- Re-read the original specification with me and helped rework the implementation, tests and
+  documentation once it was clear that three of my rulings contradicted it.
 - Ran the builds, tests, analysers, formatter and the API itself, and reported the results.
 
 Two examples of that review being worth something:
@@ -69,7 +78,8 @@ Two examples of that review being worth something:
 - It did not decide the architecture, the public API or the dependencies.
 - It did not decide what to commit, or write the commit history.
 - It did not have the final word anywhere. Where its recommendation conflicted with my reading of
-  the specification, my reading won — the two keypad mapping decisions above are the clearest cases.
+  the specification, my reading won. Where the specification itself contradicted my reading, the
+  specification won — see the first decision above.
 
 I can explain every line of this repository, every assumption in the README and the reasoning behind
 every decision listed here, because I made them.

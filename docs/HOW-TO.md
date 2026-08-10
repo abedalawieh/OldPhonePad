@@ -76,13 +76,30 @@ try
 }
 catch (ArgumentException ex)
 {
-    // ex.Message names the offending key or character and its position, for example:
-    // "Key '2' was pressed 4 times by position 3, but only 3 characters are mapped to it ("ABC")."
+    // ex.Message names the offending character and its position, for example:
+    // "Unsupported character 'A' at position 1. Valid input consists of the digits 0-9, ..."
     Console.Error.WriteLine(ex.Message);
 }
 ```
 
-The type is static, stateless and thread-safe. There is nothing to construct, register or configure.
+The type is stateless and thread-safe, and the static method needs nothing constructed or
+configured.
+
+If your application uses dependency injection, register the converter by its contract instead and
+inject it. It is stateless, so a singleton is safe:
+
+```csharp
+builder.Services.AddSingleton<IOldPhonePadConverter, OldPhonePadConverter>();
+```
+
+```csharp
+public sealed class MessageService(IOldPhonePadConverter converter)
+{
+    public string Decode(string keyPresses) => converter.Convert(keyPresses);
+}
+```
+
+Both routes run the same code, so pick whichever suits your application.
 
 If you have existing code written against the original challenge signature, that also works and runs
 the same implementation:
@@ -95,21 +112,24 @@ OldPhonePadConverter.OldPhonePad("4433555 555666#");   // "HELLO"
 
 | You send | It means | Example |
 | --- | --- | --- |
-| `2`–`9` | Press a key. Press again for the next letter. | `2`→`A`, `22`→`B`, `222`→`C` |
-| space | Pause, so two letters on the same key can be typed | `22 2` → `BA` |
+| `2`–`9` | Press a key. Press again for the next letter; presses cycle. | `2`→`A`, `22`→`B`, `222`→`C`, `2222`→`A` |
+| `0` | A space character | `20 2` → `A A` |
+| `1` | Punctuation | `1`→`&`, `11`→`'`, `111`→`(` |
+| space | Pause, so two characters on the same key can be typed | `22 2` → `BA` |
 | `*` | Backspace | `227*` → `B` |
 | `#` | Send. Must be the last character. | `33#` → `E` |
 
 Full key map:
 
-| Key | Letters | | Key | Letters |
+| Key | Characters | | Key | Characters |
 | --- | --- | --- | --- | --- |
-| `2` | A B C | | `6` | M N O |
-| `3` | D E F | | `7` | P Q R S |
-| `4` | G H I | | `8` | T U V |
-| `5` | J K L | | `9` | W X Y Z |
+| `0` | *space* | | `5` | J K L |
+| `1` | & ' ( | | `6` | M N O |
+| `2` | A B C | | `7` | P Q R S |
+| `3` | D E F | | `8` | T U V |
+| `4` | G H I | | `9` | W X Y Z |
 
-Keys `0` and `1` are not supported — see [Assumptions](#assumptions-worth-knowing).
+This is the keypad pictured in the challenge specification.
 
 ## Run the REST API demo
 
@@ -179,11 +199,11 @@ generate a client.
 Every failure is a standard [`ProblemDetails`](https://www.rfc-editor.org/rfc/rfc9457) document, so
 you can parse them all the same way. Errors explain what was actually wrong.
 
-**Too many presses on a key** — `400`:
+**A character that is not on the keypad** — `400`:
 
 ```bash
 curl -s -X POST http://localhost:5092/api/keypad/decode \
-  -H 'Content-Type: application/json' -d '{"input":"2222#"}'
+  -H 'Content-Type: application/json' -d '{"input":"2A#"}'
 ```
 
 ```json
@@ -191,14 +211,14 @@ curl -s -X POST http://localhost:5092/api/keypad/decode \
   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
   "title": "Invalid keypad input",
   "status": 400,
-  "detail": "Key '2' was pressed 4 times by position 3, but only 3 characters are mapped to it (\"ABC\"). Presses beyond the mapped characters are not supported.",
+  "detail": "Unsupported character 'A' at position 1. Valid input consists of the digits 0-9, a space for a pause, '*' for backspace and a trailing '#' to send.",
   "traceId": "00-1059ecd8c2be02b3e6e73e2a489ecff4-ffab1f50a1f60793-00"
 }
 ```
 
 **Missing the send key** — `400`, `"Input must be terminated with the send key '#'."`
 
-**A key with no letters** — `400`, `"Key '0' at position 0 has no characters mapped to it..."`
+**Content after the send key** — `400`, `"The send key '#' must be the final character..."`
 
 **`input` not supplied** — `400`, naming the property:
 
@@ -206,7 +226,7 @@ curl -s -X POST http://localhost:5092/api/keypad/decode \
 {
   "title": "One or more validation errors occurred.",
   "status": 400,
-  "errors": { "Input": ["The 'input' property is required."] }
+  "errors": { "input": ["The 'input' property is required."] }
 }
 ```
 
@@ -226,18 +246,15 @@ Every response carries a `traceId` you can quote to support.
 
 ## Assumptions worth knowing
 
-The original specification leaves some cases open. Rather than copy behaviour from one particular
-handset, this library rejects anything undefined, so you always know what you are getting:
+The keypad above, and the rule that presses cycle, both come from the original specification.
+What it leaves open is rejected rather than guessed at, so you always know what you are getting:
 
 - **The message must end with `#`**, and `#` cannot appear anywhere else. One call decodes one
   complete message; `"33#999"` is rejected rather than silently truncated.
-- **Pressing a key more times than it has letters is an error.** `"2222#"` does not wrap around to
-  `A`. Cycling is handset behaviour, not part of the specification.
-- **Keys `0` and `1` are not supported.** The specification never says what they produce and old
-  handsets disagreed, so they are rejected instead of guessed at. If your specification defines
-  them, it is a one-line change in `Keypad.cs`.
 - **Only a plain space is a pause.** Tabs and line breaks are rejected.
 - **Backspace with nothing typed does nothing**, exactly as on the handset.
+- **Key `1` produces `&`, `'`, `(` in that order.** The keypad shows the three characters but not
+  their press order; this is the order they are printed in.
 
 ## Where to look next
 

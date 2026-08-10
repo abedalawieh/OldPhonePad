@@ -26,6 +26,7 @@ The four worked examples given in the challenge are covered by dedicated accepta
 | `227*#` | `B` |
 | `4433555 555666#` | `HELLO` |
 | `8 88777444666*664#` | `TURING` |
+| `222 2 22#` | `CAB` (given in the specification's prose) |
 
 ## Architecture
 
@@ -49,8 +50,8 @@ src/
   OldPhonePad/          the library: OldPhonePadConverter (public), Keypad (internal)
   OldPhonePad.Api/      minimal API demo: contracts, one endpoint, one exception handler
 tests/
-  OldPhonePad.Tests/         80 unit tests covering keypad behaviour
-  OldPhonePad.Api.Tests/     29 integration tests over the real HTTP pipeline
+  OldPhonePad.Tests/        101 unit tests covering keypad behaviour
+  OldPhonePad.Api.Tests/     30 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
 global.json             pins the SDK to 10.0.204 so builds are reproducible
@@ -61,15 +62,22 @@ Directory.Build.props   shared target framework, nullable settings and warning p
 
 | Input | Meaning |
 | --- | --- |
-| `2`–`9` | Press a key. Repeating it moves through that key's letters: `2`=A, `22`=B, `222`=C. |
-| space | A pause. Ends the current key press run so two letters on one key can be typed: `22 2` = `BA`. |
+| `2`–`9` | Press a key. Repeating it cycles through that key's letters: `2`=A, `22`=B, `222`=C, `2222`=A again. |
+| `0` | A space character. |
+| `1` | Punctuation: `&`, `'`, `(`. |
+| space | A pause. Ends the current key press run so two characters on one key can be typed: `22 2` = `BA`. |
 | `*` | Backspace. Removes the last character produced. |
 | `#` | Send. Ends the message, and must be the final character. |
 
+The layout, including `0` and `1`, is taken from the keypad pictured in the challenge
+specification. Cycling is the specification's own word: *"pressing a button multiple times will
+cycle through the letters on it"*.
+
 ## Assumptions
 
-The challenge does not define every case. Rather than borrow behaviour from any particular handset,
-anything the specification leaves open is rejected explicitly, and the reasoning is recorded here.
+The specification defines the keypad, the cycling rule and the send key. What it leaves open is
+listed here. Rather than borrow behaviour from any particular handset, anything genuinely
+undefined is rejected explicitly, and the reasoning is recorded.
 
 | Case | Behaviour | Why |
 | --- | --- | --- |
@@ -78,10 +86,7 @@ anything the specification leaves open is rejected explicitly, and the reasoning
 | Missing `#` | `ArgumentException` | The challenge states input is terminated by `#`. Decoding an unterminated message would invent a contract that was never granted. |
 | `#` not final, e.g. `33#999` | `ArgumentException` | One call decodes one complete message. Silently discarding what follows would hide a caller's bug. |
 | `#` alone | `""` | A valid, terminated message containing no key presses. |
-| Over-pressing, e.g. `2222#` | `ArgumentException` | Wrapping around to `A` is behaviour of some handsets, not a rule in the specification. The error names the key and the press count. |
-| Key `0` | Unsupported | The specification never defines what `0` produces. Historical handsets disagreed, so it is rejected rather than guessed at. |
-| Key `1` | Unsupported | As above. |
-| Any other character | `ArgumentException` | The error names the character and its position. |
+| Any character not on the keypad | `ArgumentException` | The error names the character and its position. |
 | Backspace with nothing typed | No effect | Backspace on an empty display does nothing, as on the handset. |
 | Whitespace other than `U+0020` | `ArgumentException` | Only a space is the pause. Treating a stray tab or line ending as one would be a guess. |
 | Input longer than 1024 characters | Rejected by the **API**, not the library | A bound on work per request for a public demo endpoint. It is an HTTP concern, so the library itself has no limit. |
@@ -106,7 +111,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 109 tests
+dotnet test                  # 131 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -153,13 +158,13 @@ endpoint added later behaves the same way.
 | Unknown route / wrong method | `404` / `405` | `ProblemDetails` |
 | Anything unforeseen | `500` | Generic `ProblemDetails` — no message, type name or stack trace |
 
-Errors say something useful. Sending `{"input":"2222#"}` returns:
+Errors say something useful. Sending `{"input":"2A#"}` returns:
 
 ```json
 {
   "title": "Invalid keypad input",
   "status": 400,
-  "detail": "Key '2' was pressed 4 times by position 3, but only 3 characters are mapped to it (\"ABC\"). Presses beyond the mapped characters are not supported.",
+  "detail": "Unsupported character 'A' at position 1. Valid input consists of the digits 0-9, a space for a pause, '*' for backspace and a trailing '#' to send.",
   "traceId": "00-1059ecd8c2be02b3e6e73e2a489ecff4-ffab1f50a1f60793-00"
 }
 ```
@@ -186,15 +191,15 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-109 tests, all passing.
+131 tests, all passing.
 
-**80 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+**101 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
 contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
 category of rejected input. Exception tests assert the facts the message must carry — the offending
 key, character or position — but never whole sentences, so re-wording a message does not break them.
 
-**29 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
+**30 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
 binding, validation, the exception handler, JSON shaping, OpenAPI. They deliberately do not repeat
 the keypad matrix over HTTP; they prove the API is wired to the library and reports its failures
 faithfully. Most run in Production, since that is what a deployed instance does, with a small set
@@ -203,10 +208,12 @@ difference that hid a real bug until it was tested.
 
 ## Design decisions
 
-**No `IOldPhonePadConverter`.** The converter is deterministic, stateless and dependency-free.
-Nothing substitutes it, and the API is tested through the real pipeline rather than with mocks, so
-an interface would add indirection and buy nothing. Extensibility is served by a clean seam — the
-single keypad map — not by an abstraction built before it is needed.
+**`IOldPhonePadConverter` for consumers, a static method for convenience.** The decoding never
+varies, so the abstraction is not there to let the library swap implementations — it is there so a
+consuming application can bind to a contract, resolve it from a container and substitute a
+stand-in in its own tests. Callers who want none of that keep calling the static `Convert`. The
+interface implementation is explicit and delegates to it, so there is exactly one algorithm
+however it is reached.
 
 **No custom exception type.** `ArgumentException` and `ArgumentNullException` already mean what is
 meant here, and the API maps them centrally.
@@ -214,7 +221,8 @@ meant here, and the API maps them centrally.
 **Minimal API, not controllers.** The endpoint is one call to the library. A controller would add
 ceremony without adding structure.
 
-**Strict rather than forgiving.** Every ambiguous case fails loudly. For a library a customer builds
+**Strict rather than forgiving, but only where the specification is silent.** Anything the
+specification defines is implemented; every case it genuinely leaves open fails loudly. For a library a customer builds
 on, a clear exception is worth more than a plausible guess, and the exception messages name the key,
 character or position so a failure can be diagnosed from a log line alone.
 
@@ -236,10 +244,8 @@ widely used, all stable:
 ## Known limitations
 
 - Output is upper case only, because the keypad defines only upper case letters.
-- Keys `0` and `1` produce nothing. If a customer's specification defines them, the change is one
-  line in `Keypad.cs`.
-- The `MaxLength` validation error is keyed on `"Input"` while the JSON property is `"input"`. That
-  is standard ASP.NET Core behaviour, which reports the .NET property name.
+- Key `1` produces `&`, `'` and `(` in that order. The keypad image shows the three characters but
+  not their press order; this is the order they are printed in.
 - The demo serves the interactive documentation in every environment because demonstrating the
   library is its entire purpose. A production service would gate that.
 

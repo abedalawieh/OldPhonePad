@@ -8,10 +8,11 @@ namespace IronSoftware.OldPhonePad;
 /// </summary>
 /// <remarks>
 /// <para>
-/// On an old phone keypad each numeric key carries several letters, and a letter is chosen
-/// by pressing the key repeatedly: <c>2</c> gives <c>A</c>, <c>22</c> gives <c>B</c>,
-/// <c>222</c> gives <c>C</c>. Two letters on the same key are separated by a pause,
-/// written as a space. <c>*</c> is backspace and <c>#</c> sends the message.
+/// On an old phone keypad each numeric key carries several characters, and one is chosen by
+/// pressing the key repeatedly: <c>2</c> gives <c>A</c>, <c>22</c> gives <c>B</c>, <c>222</c>
+/// gives <c>C</c>. Presses cycle, so <c>2222</c> returns to <c>A</c>. Two characters on the same
+/// key are separated by a pause, written as a space. <c>*</c> is backspace and <c>#</c> sends
+/// the message.
 /// </para>
 /// <para>
 /// This type is stateless and thread-safe. Callers that do not use dependency injection can call
@@ -38,7 +39,7 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     /// </summary>
     /// <param name="input">
     /// The key presses to decode, terminated by the send key <c>#</c>. Valid characters are the
-    /// digits <c>2</c>-<c>9</c>, a space for a pause, <c>*</c> for backspace and a single trailing <c>#</c>.
+    /// digits <c>0</c>-<c>9</c>, a space for a pause, <c>*</c> for backspace and a single trailing <c>#</c>.
     /// </param>
     /// <returns>
     /// The decoded text in upper case. Returns an empty string when the input is only the send key.
@@ -52,9 +53,8 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     /// <exception cref="ArgumentNullException"><paramref name="input"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="input"/> is not a valid message. This covers input that is not terminated by
-    /// <c>#</c>, input containing characters after the <c>#</c>, unsupported characters, and a key
-    /// pressed more times than it has characters mapped to it. The exception message identifies the
-    /// offending key or character and its position.
+    /// <c>#</c>, input containing characters after the <c>#</c>, and characters that are not on the
+    /// keypad. The exception message identifies the offending character and its position.
     /// </exception>
     public static string Convert(string input)
     {
@@ -73,25 +73,12 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
         {
             char character = input[index];
 
-            // Another press of the same key extends the current run.
+            // Another press of the same key extends the current run. The run is resolved when it
+            // ends, so there is nothing to validate here: the specification says presses cycle
+            // through the key's letters, and a cycle has no upper bound.
             if (character == currentKey)
             {
                 pressCount++;
-
-                // A run cannot select a character the key does not have. Checking here rather
-                // than when the run ends reports the exact press that made the input invalid.
-                string pressedCharacters = Keypad.CharactersFor(character);
-                if (pressCount > pressedCharacters.Length)
-                {
-                    throw new ArgumentException(
-                        string.Create(
-                            CultureInfo.InvariantCulture,
-                            $"Key '{character}' was pressed {pressCount} times by position {index}, but only " +
-                            $"{pressedCharacters.Length} characters are mapped to it (\"{pressedCharacters}\"). " +
-                            $"Presses beyond the mapped characters are not supported."),
-                        nameof(input));
-                }
-
                 continue;
             }
 
@@ -123,19 +110,8 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
                             string.Create(
                                 CultureInfo.InvariantCulture,
                                 $"Unsupported character '{character}' at position {index}. Valid input consists " +
-                                $"of the digits 2-9, a space for a pause, '{BackspaceKey}' for backspace and a " +
+                                $"of the digits 0-9, a space for a pause, '{BackspaceKey}' for backspace and a " +
                                 $"trailing '{SendKey}' to send."),
-                            nameof(input));
-                    }
-
-                    if (!Keypad.IsMappedKey(character))
-                    {
-                        throw new ArgumentException(
-                            string.Create(
-                                CultureInfo.InvariantCulture,
-                                $"Key '{character}' at position {index} has no characters mapped to it and is " +
-                                $"not supported. The specification does not define the characters produced by " +
-                                $"keys 0 and 1."),
                             nameof(input));
                     }
 
@@ -184,8 +160,8 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     /// Does nothing when no run is pending.
     /// </summary>
     /// <remarks>
-    /// This method is total: the press count is validated as the run grows, so by the time a run
-    /// is appended it is always in range and there is no failure case to handle here.
+    /// This method is total. Presses cycle through the key's characters, as the specification
+    /// describes, so any press count selects a character and there is no failure case here.
     /// </remarks>
     /// <param name="text">The text produced so far.</param>
     /// <param name="key">The key that was pressed, or <see cref="NoKeyPressed"/> when no run is pending.</param>
@@ -197,7 +173,11 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
             return;
         }
 
-        text.Append(Keypad.CharactersFor((char)key)[pressCount - 1]);
+        string characters = Keypad.CharactersFor((char)key);
+
+        // Pressing a key more times than it has characters wraps back to the first, so four
+        // presses of "ABC" select 'A' again.
+        text.Append(characters[(pressCount - 1) % characters.Length]);
     }
 
     /// <summary>

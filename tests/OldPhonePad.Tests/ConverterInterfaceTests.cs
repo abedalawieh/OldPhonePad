@@ -37,8 +37,8 @@ public class ConverterInterfaceTests
     }
 
     [Theory]
-    [InlineData("2222#")]
-    [InlineData("0#")]
+    [InlineData("2A#")]
+    [InlineData("2\t2#")]
     [InlineData("33")]
     [InlineData("33#999")]
     public void Convert_ViaTheInterface_ThrowsTheSameExceptionAsTheStaticMethod(string input)
@@ -70,7 +70,7 @@ public class ConverterInterfaceTests
 
         Assert.Equal("HELLO", converter.Convert("4433555 555666#"));
         Assert.Equal("E", converter.Convert("33#"));
-        Assert.Throws<ArgumentException>(() => converter.Convert("2222#"));
+        Assert.Throws<ArgumentException>(() => converter.Convert("2A#"));
         Assert.Equal("HELLO", converter.Convert("4433555 555666#"));
     }
 }

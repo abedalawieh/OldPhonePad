@@ -13,18 +13,16 @@ internal static class Keypad
 {
     /// <summary>
     /// Characters produced by each key, indexed by the key's numeric value.
-    /// An empty entry means the key has no characters mapped to it and is therefore
-    /// not accepted as input.
     /// </summary>
     /// <remarks>
-    /// Keys <c>0</c> and <c>1</c> are deliberately unmapped: the challenge specification
-    /// does not define what they produce, and historical handsets disagreed with each other.
-    /// Rather than guess, unmapped keys are rejected as invalid input.
+    /// Taken from the keypad shown in the challenge specification, including <c>0</c> for a
+    /// space and <c>1</c> for punctuation. Every key produces at least one character, so any
+    /// digit is valid input.
     /// </remarks>
     private static readonly string[] CharactersByKey =
     [
-        "",      // 0 - not defined by the specification
-        "",      // 1 - not defined by the specification
+        " ",     // 0 - space
+        "&'(",   // 1
         "ABC",   // 2
         "DEF",   // 3
         "GHI",   // 4
@@ -37,13 +35,6 @@ internal static class Keypad
 
     /// <summary>Determines whether <paramref name="character"/> is a numeric key.</summary>
     internal static bool IsKey(char character) => character is >= '0' and <= '9';
-
-    /// <summary>
-    /// Determines whether <paramref name="character"/> is a numeric key that has
-    /// characters mapped to it.
-    /// </summary>
-    internal static bool IsMappedKey(char character) =>
-        IsKey(character) && CharactersFor(character).Length > 0;
 
     /// <summary>
     /// Returns the characters produced by the given key, in press order.

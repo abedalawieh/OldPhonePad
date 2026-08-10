@@ -30,12 +30,13 @@ internal static class KeypadEndpoints
                 """
                 Multi-tap keypad input, as typed on an old mobile phone.
 
-                Press a key repeatedly to choose one of its letters: 2 gives A, 22 gives B, 222 gives C.
-                Separate two letters on the same key with a space, which represents a pause: '22 2' gives 'BA'.
+                Press a key repeatedly to choose one of its characters: 2 gives A, 22 gives B, 222 gives C.
+                Presses cycle, so 2222 returns to A.
+                Separate two characters on the same key with a space, which represents a pause: '22 2' gives 'BA'.
+                Key 0 types a space and key 1 types the punctuation &'(.
                 '*' deletes the previous character and '#' sends the message.
 
                 The message must end with '#', and '#' may not appear anywhere else.
-                Keys 0 and 1 are not supported, and a key pressed more times than it has letters is rejected.
                 """)
             .Produces<DecodeResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
