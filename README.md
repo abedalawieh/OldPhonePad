@@ -60,7 +60,7 @@ src/
   OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler,
                                      and a self-contained test page at the site root
 tests/
-  OldPhonePad.Tests/        106 unit tests covering keypad behaviour and registration
+  OldPhonePad.Tests/        113 unit tests covering keypad behaviour and registration
   OldPhonePad.Api.Tests/     34 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
@@ -122,7 +122,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 140 tests
+dotnet test                  # 147 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -202,9 +202,9 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-140 tests, all passing.
+147 tests, all passing.
 
-**106 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+**113 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
 contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
 category of rejected input. Exception tests assert the facts the message must carry — the offending

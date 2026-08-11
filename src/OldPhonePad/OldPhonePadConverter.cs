@@ -109,9 +109,9 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
                         throw new ArgumentException(
                             string.Create(
                                 CultureInfo.InvariantCulture,
-                                $"Unsupported character '{character}' at position {index}. Valid input consists " +
-                                $"of the digits 0-9, a space for a pause, '{BackspaceKey}' for backspace and a " +
-                                $"trailing '{SendKey}' to send."),
+                                $"Unsupported character {Describe(character)} at position {index}. Valid input " +
+                                $"consists of the digits 0-9, a space for a pause, '{BackspaceKey}' for backspace " +
+                                $"and a trailing '{SendKey}' to send."),
                             nameof(input));
                     }
 
@@ -154,6 +154,27 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
     /// <returns>The decoded text in upper case.</returns>
     string IOldPhonePadConverter.Convert(string input) => Convert(input);
+
+    /// <summary>
+    /// Describes a rejected character in a form a reader can act on.
+    /// </summary>
+    /// <remarks>
+    /// A character that leaves no mark on screen cannot be quoted usefully: a tab reported as
+    /// <c>' '</c> tells the reader nothing, and is easily mistaken for the space that is a valid
+    /// pause. Anything invisible is therefore named by its code point, and the few that occur in
+    /// practice - a tab or a line ending pasted in with the input, or a non-breaking space from a
+    /// word processor - are named outright.
+    /// </remarks>
+    private static string Describe(char character) => character switch
+    {
+        '\t' => "U+0009 (a tab)",
+        '\n' => "U+000A (a line feed)",
+        '\r' => "U+000D (a carriage return)",
+        '\u00A0' => "U+00A0 (a non-breaking space)",
+        _ when char.IsControl(character) || char.IsWhiteSpace(character) =>
+            string.Create(CultureInfo.InvariantCulture, $"U+{(int)character:X4} (an invisible character)"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"'{character}'"),
+    };
 
     /// <summary>
     /// Resolves a completed run of key presses to the character it selects and appends it.

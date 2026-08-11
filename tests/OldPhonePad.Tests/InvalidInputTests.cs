@@ -71,6 +71,32 @@ public class InvalidInputTests
     }
 
     [Theory]
+    [InlineData("2\t2#", "U+0009")]
+    [InlineData("2\n2#", "U+000A")]
+    [InlineData("2\r2#", "U+000D")]
+    [InlineData("2\u00A02#", "U+00A0")]
+    [InlineData("2\v2#", "U+000B")]
+    public void Convert_WithAnInvisibleCharacter_NamesItByCodePoint(string input, string codePoint)
+    {
+        // Quoting a character that leaves no mark on screen tells the reader nothing, and an
+        // invisible character is easily mistaken for the space that is a valid pause.
+        var exception = Assert.Throws<ArgumentException>(() => OldPhonePadConverter.Convert(input));
+
+        Assert.Contains(codePoint, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("2A#", "'A'")]
+    [InlineData("2+#", "'+'")]
+    public void Convert_WithAVisibleCharacter_QuotesItDirectly(string input, string quoted)
+    {
+        // A character the reader can see needs no ceremony.
+        var exception = Assert.Throws<ArgumentException>(() => OldPhonePadConverter.Convert(input));
+
+        Assert.Contains(quoted, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("2A#")]
     [InlineData("2\t2#")]
     [InlineData("33")]
