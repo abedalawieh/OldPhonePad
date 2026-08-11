@@ -60,8 +60,8 @@ src/
   OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler,
                                      and a self-contained test page at the site root
 tests/
-  OldPhonePad.Tests/        137 unit tests covering keypad behaviour and registration
-  OldPhonePad.Api.Tests/     34 integration tests over the real HTTP pipeline
+  OldPhonePad.Tests/        141 unit tests covering keypad behaviour and registration
+  OldPhonePad.Api.Tests/     47 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
 .github/workflows/      CI: format, build, test and pack on every push
@@ -122,7 +122,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 171 tests
+dotnet test                  # 188 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -155,9 +155,14 @@ Full walkthrough, including error responses: **[docs/HOW-TO.md](docs/HOW-TO.md)*
 
 ## Error handling
 
-Invalid input is answered, never guessed at. A single `IExceptionHandler` translates the library's
-exceptions into RFC 9457 `ProblemDetails`, so no endpoint contains a `try`/`catch` and every
-endpoint added later behaves the same way.
+Invalid input is answered, never guessed at, and every failure is an RFC 9457 `ProblemDetails`
+document so a client can parse them all the same way.
+
+Rejected keypad input never becomes an exception at all: the endpoint calls `TryConvert` and turns
+`false` into a 400. The one `IExceptionHandler` in the application handles a single thing — a
+request body that could not be read, which ASP.NET Core answers itself in production but raises as
+an exception in development. Everything else it passes on, so an unforeseen fault becomes a generic
+500 that discloses nothing. No endpoint contains a `try`/`catch`.
 
 | Situation | Status | Body |
 | --- | --- | --- |
@@ -202,15 +207,15 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-171 tests, all passing.
+188 tests, all passing.
 
-**137 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+**141 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
 contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
 category of rejected input. Exception tests assert the facts the message must carry — the offending
 key, character or position — but never whole sentences, so re-wording a message does not break them.
 
-**34 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
+**47 integration tests** exercise the real HTTP pipeline through `WebApplicationFactory`: routing,
 binding, validation, the exception handler, JSON shaping, OpenAPI. They deliberately do not repeat
 the keypad matrix over HTTP; they prove the API is wired to the library and reports its failures
 faithfully. Most run in Production, since that is what a deployed instance does, with a small set
@@ -240,10 +245,33 @@ still throws for callers who want a rejection they cannot ignore. Both run the s
 the two can never disagree, and a test asserts they give the same explanation.
 
 **No custom exception type.** `ArgumentException` and `ArgumentNullException` already mean what is
-meant here, and the API maps them centrally.
+meant here.
+
+**The exception handler recognises one exception type, not a family.** It would be tempting to have
+it catch `ArgumentException` and answer 400, since that is what the library throws. That is a trap:
+`ArgumentException` is raised throughout the base class library and ASP.NET Core, and
+`ArgumentNullException` and `ArgumentOutOfRangeException` both derive from it. A server fault would
+then be reported to the caller as their mistake, with the exception's own message — written for a
+developer reading a log — copied into the response body. The handler matches only
+`BadHttpRequestException`, and a test throws an unrelated `ArgumentException` from inside the
+pipeline to prove a genuine fault still returns an opaque 500.
 
 **Minimal API, not controllers.** The endpoint is one call to the library. A controller would add
 ceremony without adding structure.
+
+**Both environments answer the same way.** Minimal APIs raise a binding failure as an exception in
+Development but answer it directly in Production, where the reply is a bare `400` carrying no
+explanation at all. `ThrowOnBadRequest` is enabled everywhere so both go down the same path, and a
+deployed instance explains an unreadable body exactly as a local one does. Without it the tests
+would describe behaviour no customer ever sees.
+
+**The forwarded scheme is honoured.** The demo is hosted behind a proxy that terminates TLS and
+forwards over plain HTTP. Left alone, HTTPS redirection sees `http`, answers `307` to the HTTPS
+address, and the proxy forwards it over HTTP again — an infinite redirect loop that answers nothing.
+`UseForwardedHeaders` fixes it, restricted to the scheme alone: nothing here decides anything from
+the client's address, so there is no reason to accept a claim about it. Four tests cover it,
+including one asserting that a request which genuinely arrived over HTTP is *still* upgraded, so the
+fix cannot quietly become "HTTPS redirection turned off".
 
 **Strict rather than forgiving, but only where the specification is silent.** Anything the
 specification defines is implemented; every case it genuinely leaves open fails loudly. For a library a customer builds
