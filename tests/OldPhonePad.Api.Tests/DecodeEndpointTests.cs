@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using OldPhonePad.Api.Contracts;
 
 namespace OldPhonePad.Api.Tests;
 
@@ -124,7 +125,7 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
     }
 
     [Fact]
-    public async Task Decode_WithNullInput_Returns400()
+    public async Task Decode_WithNullInput_Returns400NamingTheProperty()
     {
         using HttpClient client = factory.CreateClient();
 
@@ -133,6 +134,45 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
             new { input = (string?)null });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // Asserting the status alone would pass even if null reached the library and came back
+        // described as a keypad problem. An absent value is a request-shape problem, and the
+        // client needs to be told which property is missing.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(problem.TryGetProperty("errors", out JsonElement errors));
+        Assert.True(errors.TryGetProperty("input", out _));
+    }
+
+    [Fact]
+    public async Task Decode_WithInputOfExactlyTheMaximumLength_IsAccepted()
+    {
+        using HttpClient client = factory.CreateClient();
+
+        // The boundary itself: 1023 key presses plus the send key. Off-by-one here would reject a
+        // message the contract promises to accept, and a test using a wildly oversized input
+        // cannot tell the difference.
+        string atTheLimit = new string('2', DecodeRequest.MaxInputLength - 1) + "#";
+        Assert.Equal(DecodeRequest.MaxInputLength, atTheLimit.Length);
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(DecodeUrl, new { input = atTheLimit });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Decode_WithInputOneCharacterOverTheMaximumLength_Returns400()
+    {
+        using HttpClient client = factory.CreateClient();
+
+        string justOver = new string('2', DecodeRequest.MaxInputLength) + "#";
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(DecodeUrl, new { input = justOver });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(problem.TryGetProperty("errors", out JsonElement errors));
+        Assert.True(errors.TryGetProperty("input", out _));
     }
 
     [Fact]
@@ -148,28 +188,6 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
 
         JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(problem.TryGetProperty("errors", out _));
-    }
-
-    [Fact]
-    public async Task Decode_WithMalformedJson_Returns400ExplainingWhatTheBodyShouldBe()
-    {
-        using HttpClient client = factory.CreateClient();
-        using var content = new StringContent("{\"input\": ", Encoding.UTF8, "application/json");
-
-        using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        // This factory runs in production, which is what a deployed instance does. Left to itself
-        // ASP.NET Core answers a binding failure there with a bare 400 carrying no explanation,
-        // while development raises it as an exception and gets the helpful message. Asserting the
-        // detail here is what stops the two environments drifting apart again.
-        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Malformed request", problem.GetProperty("title").GetString());
-        Assert.Contains(
-            "must be a JSON object",
-            problem.GetProperty("detail").GetString(),
-            StringComparison.Ordinal);
     }
 
     [Theory]
@@ -210,14 +228,58 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
     }
 
     [Fact]
-    public async Task Decode_WithNonJsonContentType_Returns415()
+    public async Task Decode_WithPropertiesTheContractDoesNotDeclare_IgnoresThem()
     {
         using HttpClient client = factory.CreateClient();
-        using var content = new StringContent("33#", Encoding.UTF8, "text/plain");
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            DecodeUrl,
+            new { input = "33#", unexpected = "ignored", anotherOne = 42 });
+
+        // Tolerating unknown properties is what lets a client add fields without this API
+        // breaking, and is the default System.Text.Json behaviour worth pinning deliberately.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        JsonElement decoded = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("E", decoded.GetProperty("output").GetString());
+    }
+
+    [Fact]
+    public async Task Decode_WithInputNamedInDifferentCasing_IsBoundCaseInsensitively()
+    {
+        using HttpClient client = factory.CreateClient();
+        using var content = new StringContent("{\"Input\": \"33#\"}", Encoding.UTF8, "application/json");
 
         using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
 
-        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+        // ASP.NET Core binds JSON case-insensitively by default. A client that sends "Input"
+        // should not be told the property is missing.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        JsonElement decoded = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("E", decoded.GetProperty("output").GetString());
+    }
+
+    [Fact]
+    public async Task Decode_WithMalformedJson_Returns400ExplainingWhatTheBodyShouldBe()
+    {
+        using HttpClient client = factory.CreateClient();
+        using var content = new StringContent("{\"input\": ", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // This factory runs in production, which is what a deployed instance does. Left to itself
+        // ASP.NET Core answers a binding failure there with a bare 400 carrying no explanation,
+        // while development raises it as an exception and gets the helpful message. Asserting the
+        // detail here is what stops the two environments drifting apart again.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Malformed request", problem.GetProperty("title").GetString());
+        Assert.Contains(
+            "must be a JSON object",
+            problem.GetProperty("detail").GetString(),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -232,4 +294,16 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
         JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Malformed request", problem.GetProperty("title").GetString());
     }
+
+    [Fact]
+    public async Task Decode_WithNonJsonContentType_Returns415()
+    {
+        using HttpClient client = factory.CreateClient();
+        using var content = new StringContent("33#", Encoding.UTF8, "text/plain");
+
+        using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
 }
