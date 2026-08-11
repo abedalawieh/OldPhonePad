@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 using OldPhonePad.Api.Endpoints;
 using OldPhonePad.Api.ErrorHandling;
@@ -47,24 +48,48 @@ builder.Services.AddExceptionHandler<MalformedRequestExceptionHandler>();
 // clearly as a local one - and the behaviour the tests describe is the behaviour customers get.
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 
+// This application is deployed behind a proxy that terminates TLS and forwards the request over
+// plain HTTP. Without this the forwarded scheme is ignored, UseHttpsRedirection below sees http,
+// and every request is answered with a 307 back to https - which the proxy forwards as http again.
+// That is an infinite redirect loop, and it was reproduced before this was added.
+//
+// Only the scheme is honoured. Nothing here makes a decision based on the client's address, so
+// there is no reason to accept a claim about it. The proxy's own address is not knowable ahead of
+// deployment, so the known-network lists are cleared; that is the accepted trade-off for a
+// host-managed proxy, and it is safe here because the app is only reachable through one.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 WebApplication app = builder.Build();
 
-// Must come first so it can catch exceptions thrown further along the pipeline.
+// Before anything that inspects the request, so the rest of the pipeline sees the scheme the
+// client actually used rather than the one the proxy used to reach this process.
+app.UseForwardedHeaders();
+
+// Must come first among the error-handling middleware so it can catch exceptions thrown further
+// along the pipeline.
 app.UseExceptionHandler();
 
 // Gives responses that have a status code but no body - 404 and 405, for example - a
 // ProblemDetails body, so clients can parse every failure the same way.
 app.UseStatusCodePages();
 
-// The demo page at the site root. It is a single static file with no build step and no
-// dependencies, served by this application so the demo deploys as one unit.
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
+// Ahead of the static files below, so the demo page is upgraded on the same terms as the API.
+// Serving files first would short-circuit the request and leave the page as the one thing on the
+// site reachable over plain HTTP.
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// The demo page at the site root. It is a single static file with no build step and no
+// dependencies, served by this application so the demo deploys as one unit.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // Exposed in every environment because this application exists to demonstrate the library:
 // the interactive reference is the demo. A production service would gate this behind an
