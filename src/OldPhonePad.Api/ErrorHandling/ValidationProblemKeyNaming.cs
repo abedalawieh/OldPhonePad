@@ -48,10 +48,12 @@ internal static class ValidationProblemKeyNaming
     /// <summary>
     /// Converts a member path to the name the serializer would produce, segment by segment.
     /// </summary>
+    /// <remarks>
+    /// A name with no separator splits into a single segment, so the nested and unnested cases need
+    /// no branch between them.
+    /// </remarks>
     private static string ToJsonName(string member) =>
-        member.Contains(PathSeparator, StringComparison.Ordinal)
-            ? string.Join(PathSeparator, member.Split(PathSeparator).Select(ToCamelCase))
-            : ToCamelCase(member);
+        string.Join(PathSeparator, member.Split(PathSeparator).Select(ToCamelCase));
 
     private static string ToCamelCase(string segment) =>
         JsonNamingPolicy.CamelCase.ConvertName(segment);
