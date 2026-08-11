@@ -60,6 +60,24 @@ public sealed class ErrorResponseTests(KeypadApiFactory factory) : IClassFixture
     }
 
     [Fact]
+    public async Task UnexpectedArgumentFailure_Returns500RatherThanBeingMistakenForBadKeypadInput()
+    {
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync(UnexpectedFailureRoute.ArgumentFailurePath);
+
+        string body = await response.Content.ReadAsStringAsync();
+
+        // A server fault that happens to be an ArgumentException is still a server fault. Reporting
+        // it as a 400 would tell the client to fix a request that was never the problem, and would
+        // put the exception's own message - written for a developer, not a caller - in the response.
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain(UnexpectedFailureRoute.LeakCanary, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("someInternalParameter", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invalid keypad input", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task EveryFailure_CarriesATraceIdentifierForSupportToCorrelate()
     {
         using HttpClient client = factory.CreateClient();

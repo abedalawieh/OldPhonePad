@@ -2,7 +2,6 @@ using IronSoftware.OldPhonePad;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OldPhonePad.Api.Contracts;
-using OldPhonePad.Api.ErrorHandling;
 
 namespace OldPhonePad.Api.Endpoints;
 
@@ -17,6 +16,16 @@ namespace OldPhonePad.Api.Endpoints;
 /// </remarks>
 internal static class KeypadEndpoints
 {
+    /// <summary>
+    /// The title carried by every response that rejects a keypad message.
+    /// </summary>
+    /// <remarks>
+    /// This endpoint is the only place a keypad rejection is produced, so the title lives with it.
+    /// It used to be shared with the exception handler, back when a rejection arrived there as an
+    /// exception; asking the library for a result instead removed the second producer.
+    /// </remarks>
+    private const string InvalidInputTitle = "Invalid keypad input";
+
     /// <summary>Maps the keypad endpoints onto the application.</summary>
     internal static IEndpointRouteBuilder MapKeypadEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -57,8 +66,9 @@ internal static class KeypadEndpoints
     /// exception is raised on a path that is expected to be taken.
     /// </para>
     /// <para>
-    /// <c>KeypadInputExceptionHandler</c> still guards the pipeline. It now covers only what is
-    /// genuinely unforeseen - an unreadable request body, or a fault this code did not anticipate.
+    /// A request that never became a <see cref="DecodeRequest"/> at all still arrives as an
+    /// exception, and <c>MalformedRequestExceptionHandler</c> answers that. Anything else is
+    /// unforeseen and becomes a generic 500.
     /// </para>
     /// </remarks>
     /// <param name="request">The keypad message to decode.</param>
@@ -70,14 +80,14 @@ internal static class KeypadEndpoints
         [FromBody] DecodeRequest request,
         IOldPhonePadConverter converter)
     {
-        // Input is non-null here: the [Required] attribute on the contract rejects a missing
-        // property before the endpoint runs.
-        if (!converter.TryConvert(request.Input!, out string? output, out string? errorMessage))
+        // TryConvert accepts null and rejects it like any other invalid message, so the endpoint
+        // needs no null check of its own and makes no claim about what validation ran first.
+        if (!converter.TryConvert(request.Input, out string? output, out string? errorMessage))
         {
             return TypedResults.Problem(
                 detail: errorMessage,
                 statusCode: StatusCodes.Status400BadRequest,
-                title: KeypadInputExceptionHandler.InvalidInputTitle);
+                title: InvalidInputTitle);
         }
 
         return TypedResults.Ok(new DecodeResponse(output));

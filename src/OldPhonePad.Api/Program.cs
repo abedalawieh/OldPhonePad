@@ -37,8 +37,9 @@ builder.Services.AddValidation();
 builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = ValidationProblemKeyNaming.UseJsonPropertyNames);
 
-// Turns the library's rejection of invalid keypad input into a 400 instead of a 500.
-builder.Services.AddExceptionHandler<KeypadInputExceptionHandler>();
+// Answers a request whose body could not be read with a 400. It recognises nothing else, so a
+// genuine fault still becomes a generic 500 that discloses nothing.
+builder.Services.AddExceptionHandler<MalformedRequestExceptionHandler>();
 
 WebApplication app = builder.Build();
 
