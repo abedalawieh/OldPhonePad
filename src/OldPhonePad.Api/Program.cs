@@ -41,6 +41,12 @@ builder.Services.AddProblemDetails(options =>
 // genuine fault still becomes a generic 500 that discloses nothing.
 builder.Services.AddExceptionHandler<MalformedRequestExceptionHandler>();
 
+// Minimal APIs raise a binding failure as an exception in development but answer it directly in
+// production, where the response is a bare 400 with no explanation. Enabling this everywhere sends
+// both environments down the same path, so a deployed instance explains an unreadable body just as
+// clearly as a local one - and the behaviour the tests describe is the behaviour customers get.
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+
 WebApplication app = builder.Build();
 
 // Must come first so it can catch exceptions thrown further along the pipeline.

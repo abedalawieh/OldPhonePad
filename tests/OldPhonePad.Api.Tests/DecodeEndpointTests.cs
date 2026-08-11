@@ -151,7 +151,7 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
     }
 
     [Fact]
-    public async Task Decode_WithMalformedJson_Returns400()
+    public async Task Decode_WithMalformedJson_Returns400ExplainingWhatTheBodyShouldBe()
     {
         using HttpClient client = factory.CreateClient();
         using var content = new StringContent("{\"input\": ", Encoding.UTF8, "application/json");
@@ -159,6 +159,54 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
         using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // This factory runs in production, which is what a deployed instance does. Left to itself
+        // ASP.NET Core answers a binding failure there with a bare 400 carrying no explanation,
+        // while development raises it as an exception and gets the helpful message. Asserting the
+        // detail here is what stops the two environments drifting apart again.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Malformed request", problem.GetProperty("title").GetString());
+        Assert.Contains(
+            "must be a JSON object",
+            problem.GetProperty("detail").GetString(),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{\"input\": 123}", "a number")]
+    [InlineData("{\"input\": true}", "a boolean")]
+    [InlineData("{\"input\": [\"33#\"]}", "an array")]
+    [InlineData("{\"input\": {\"value\": \"33#\"}}", "an object")]
+    public async Task Decode_WithInputOfTheWrongJsonType_Returns400RatherThan500(
+        string body,
+        string wrongType)
+    {
+        using HttpClient client = factory.CreateClient();
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content);
+
+        // Well-formed JSON that does not fit the contract is still the client's mistake. A 500
+        // here would blame the server for a request it was right to refuse.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(
+            "application/problem+json",
+            response.Content.Headers.ContentType?.MediaType);
+
+        string raw = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("DecodeRequest", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("JsonException", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", raw, StringComparison.Ordinal);
+
+        // Status and absence of a leak would both hold for a message that explains the wrong thing.
+        // The body here parsed perfectly well and does carry an 'input' property, so saying it
+        // "could not be read" would be false; what the client needs told is the shape expected.
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        string? detail = problem.GetProperty("detail").GetString();
+
+        Assert.False(string.IsNullOrWhiteSpace(detail), $"No explanation given for {wrongType}.");
+        Assert.Contains("string", detail, StringComparison.Ordinal);
+        Assert.Contains("'input'", detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -173,12 +221,15 @@ public sealed class DecodeEndpointTests(KeypadApiFactory factory) : IClassFixtur
     }
 
     [Fact]
-    public async Task Decode_WithoutARequestBody_Returns400()
+    public async Task Decode_WithoutARequestBody_Returns400ExplainingWhatTheBodyShouldBe()
     {
         using HttpClient client = factory.CreateClient();
 
         using HttpResponseMessage response = await client.PostAsync(DecodeUrl, content: null);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Malformed request", problem.GetProperty("title").GetString());
     }
 }
