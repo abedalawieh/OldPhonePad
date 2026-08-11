@@ -204,7 +204,7 @@
     ["1", "&'("], ["2", "ABC"], ["3", "DEF"],
     ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
     ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"],
-    ["*", "del"], ["0", "space"], ["#", "send"]
+    ["*", "del"], ["0", "space"], ["#", "send ↵"]
   ];
 
   var EXAMPLES = [
@@ -229,8 +229,20 @@
   });
 
   function press(ch) {
+    // On a handset '#' sends. Anything typed after it could never have been keyed in, so
+    // pressing a key when the message is already sent starts the next one instead.
+    if (input.value.indexOf("#") !== -1) {
+      input.value = "";
+      reset();
+    }
+
     input.value += ch;
     input.focus();
+
+    if (ch === "#") {
+      decode();
+      return;
+    }
   }
 
   $("back").addEventListener("click", function () {
