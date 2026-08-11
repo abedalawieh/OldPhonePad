@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronSoftware.OldPhonePad.Tests;
@@ -76,6 +77,18 @@ public class ServiceCollectionExtensionsTests
     /// <summary>Stands in for an application's own implementation.</summary>
     private sealed class StubConverter : IOldPhonePadConverter
     {
-        public string Convert(string input) => "STUBBED";
+        internal const string Output = "STUBBED";
+
+        public string Convert(string input) => Output;
+
+        public bool TryConvert(
+            string? input,
+            [NotNullWhen(true)] out string? output,
+            [NotNullWhen(false)] out string? errorMessage)
+        {
+            output = Output;
+            errorMessage = null;
+            return true;
+        }
     }
 }

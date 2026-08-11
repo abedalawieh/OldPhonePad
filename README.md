@@ -60,7 +60,7 @@ src/
   OldPhonePad.Api/                   minimal API demo: contracts, one endpoint, one handler,
                                      and a self-contained test page at the site root
 tests/
-  OldPhonePad.Tests/        113 unit tests covering keypad behaviour and registration
+  OldPhonePad.Tests/        137 unit tests covering keypad behaviour and registration
   OldPhonePad.Api.Tests/     34 integration tests over the real HTTP pipeline
 docs/HOW-TO.md          customer guide
 AI-PROMPT.md            AI usage disclosure
@@ -122,7 +122,7 @@ git clone https://github.com/abedalawieh/OldPhonePad.git
 cd OldPhonePad
 
 dotnet build                 # 0 warnings, 0 errors
-dotnet test                  # 147 tests
+dotnet test                  # 171 tests
 dotnet run --project src/OldPhonePad.Api
 ```
 
@@ -202,9 +202,9 @@ no per-call allocation, and the only place to change if another layout is ever n
 
 ## Testing
 
-147 tests, all passing.
+171 tests, all passing.
 
-**113 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
+**137 unit tests** cover behaviour through the public API only — no `InternalsVisibleTo`, no testing
 of private methods. The four official examples are dedicated tests because they are the challenge's
 contract. Beyond those: every key, every press count, pauses, backspace in each position, and each
 category of rejected input. Exception tests assert the facts the message must carry — the offending
@@ -232,6 +232,12 @@ consuming application can bind to a contract, resolve it from a container and su
 stand-in in its own tests. Callers who want none of that keep calling the static `Convert`. The
 interface implementation is explicit and delegates to it, so there is exactly one algorithm
 however it is reached.
+
+**Expected failures are values; unexpected failures are exceptions.** `TryConvert` returns
+`false` with an explanation, so a caller decoding something a person typed never pays for an
+exception on a path that is expected to be taken - and never has a debugger stop on it. `Convert`
+still throws for callers who want a rejection they cannot ignore. Both run the same decoder, so
+the two can never disagree, and a test asserts they give the same explanation.
 
 **No custom exception type.** `ArgumentException` and `ArgumentNullException` already mean what is
 meant here, and the API maps them centrally.

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
@@ -59,7 +60,91 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     public static string Convert(string input)
     {
         ArgumentNullException.ThrowIfNull(input);
-        ValidateTermination(input);
+
+        if (!TryDecode(input, out string output, out string? errorMessage))
+        {
+            throw new ArgumentException(errorMessage, nameof(input));
+        }
+
+        return output;
+    }
+
+    /// <summary>
+    /// Decodes a complete old phone keypad message into text, reporting invalid input by
+    /// returning <see langword="false"/> rather than by throwing.
+    /// </summary>
+    /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
+    /// <param name="output">
+    /// The decoded text when this method returns <see langword="true"/>; otherwise
+    /// <see langword="null"/>.
+    /// </param>
+    /// <param name="errorMessage">
+    /// An explanation of why the input was rejected when this method returns
+    /// <see langword="false"/>; otherwise <see langword="null"/>. The explanation names the
+    /// offending character and its position, and is suitable for showing to the caller.
+    /// </param>
+    /// <returns><see langword="true"/> if the input was decoded; otherwise <see langword="false"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Prefer this overload where invalid input is ordinary traffic rather than a fault - a value
+    /// typed by a user, or read from a request - because a rejection is then an expected result
+    /// instead of an exception. It never throws, including for <see langword="null"/> input.
+    /// </para>
+    /// <para>
+    /// <see cref="Convert(string)"/> remains for callers who want a rejection to be a failure they
+    /// cannot ignore. Both run exactly the same decoding.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// if (OldPhonePadConverter.TryConvert(userInput, out string? text, out string? errorMessage))
+    /// {
+    ///     Console.WriteLine(text);
+    /// }
+    /// else
+    /// {
+    ///     Console.Error.WriteLine(errorMessage);
+    /// }
+    /// </code>
+    /// </example>
+    public static bool TryConvert(
+        string? input,
+        [NotNullWhen(true)] out string? output,
+        [NotNullWhen(false)] out string? errorMessage)
+    {
+        if (input is null)
+        {
+            output = null;
+            errorMessage = "Input must not be null.";
+            return false;
+        }
+
+        if (!TryDecode(input, out string decoded, out errorMessage))
+        {
+            output = null;
+            return false;
+        }
+
+        output = decoded;
+        errorMessage = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The decoder. Returns <see langword="false"/> with an explanation rather than throwing, so
+    /// that both public entry points share one implementation and one set of messages.
+    /// </summary>
+    private static bool TryDecode(
+        string input,
+        out string output,
+        [NotNullWhen(false)] out string? errorMessage)
+    {
+        output = "";
+
+        if (!TryValidateTermination(input, out errorMessage))
+        {
+            return false;
+        }
 
         var text = new StringBuilder(input.Length);
 
@@ -106,13 +191,13 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
                 default:
                     if (!Keypad.IsKey(character))
                     {
-                        throw new ArgumentException(
-                            string.Create(
-                                CultureInfo.InvariantCulture,
-                                $"Unsupported character {Describe(character)} at position {index}. Valid input " +
-                                $"consists of the digits 0-9, a space for a pause, '{BackspaceKey}' for backspace " +
-                                $"and a trailing '{SendKey}' to send."),
-                            nameof(input));
+                        errorMessage = string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"Unsupported character {Describe(character)} at position {index}. Valid input " +
+                            $"consists of the digits 0-9, a space for a pause, '{BackspaceKey}' for backspace " +
+                            $"and a trailing '{SendKey}' to send.");
+
+                        return false;
                     }
 
                     currentKey = character;
@@ -124,7 +209,9 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
         // The send key ends the final run.
         AppendRun(text, currentKey, pressCount);
 
-        return text.ToString();
+        output = text.ToString();
+        errorMessage = null;
+        return true;
     }
 
     /// <summary>
@@ -154,6 +241,19 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
     /// <returns>The decoded text in upper case.</returns>
     string IOldPhonePadConverter.Convert(string input) => Convert(input);
+
+    /// <summary>
+    /// Implements <see cref="IOldPhonePadConverter.TryConvert"/>. Explicit for the same reason as
+    /// <see cref="IOldPhonePadConverter.Convert"/> above, and it delegates to the static method.
+    /// </summary>
+    /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
+    /// <param name="output">The decoded text, or <see langword="null"/> when the input was rejected.</param>
+    /// <param name="errorMessage">Why the input was rejected, or <see langword="null"/> when it was not.</param>
+    /// <returns><see langword="true"/> if the input was decoded; otherwise <see langword="false"/>.</returns>
+    bool IOldPhonePadConverter.TryConvert(
+        string? input,
+        [NotNullWhen(true)] out string? output,
+        [NotNullWhen(false)] out string? errorMessage) => TryConvert(input, out output, out errorMessage);
 
     /// <summary>
     /// Describes a rejected character in a form a reader can act on.
@@ -202,34 +302,37 @@ public sealed class OldPhonePadConverter : IOldPhonePadConverter
     }
 
     /// <summary>
-    /// Verifies that the message is terminated by exactly one send key, in final position.
+    /// Checks that the message is terminated by exactly one send key, in final position.
     /// </summary>
     /// <remarks>
     /// Running this check up front means the decode loop can treat the last character as known
     /// and never has to consider the send key or an unterminated message.
     /// </remarks>
-    private static void ValidateTermination(string input)
+    private static bool TryValidateTermination(string input, [NotNullWhen(false)] out string? errorMessage)
     {
-        int sendKeyIndex = input.IndexOf(SendKey);
+        int sendKeyIndex = input.IndexOf(SendKey, StringComparison.Ordinal);
 
         if (sendKeyIndex < 0)
         {
-            throw new ArgumentException(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"Input must be terminated with the send key '{SendKey}'. Received \"{input}\"."),
-                nameof(input));
+            errorMessage = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Input must be terminated with the send key '{SendKey}'. Received \"{input}\".");
+
+            return false;
         }
 
         if (sendKeyIndex != input.Length - 1)
         {
-            throw new ArgumentException(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"The send key '{SendKey}' must be the final character because it ends the message, but it " +
-                    $"was found at position {sendKeyIndex} of {input.Length}. A single call decodes exactly one " +
-                    $"complete message."),
-                nameof(input));
+            errorMessage = string.Create(
+                CultureInfo.InvariantCulture,
+                $"The send key '{SendKey}' must be the final character because it ends the message, but it " +
+                $"was found at position {sendKeyIndex} of {input.Length}. A single call decodes exactly one " +
+                $"complete message.");
+
+            return false;
         }
+
+        errorMessage = null;
+        return true;
     }
 }

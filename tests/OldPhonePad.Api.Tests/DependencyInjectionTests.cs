@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Text.Json;
 using IronSoftware.OldPhonePad;
@@ -62,5 +63,15 @@ public sealed class DependencyInjectionTests(KeypadApiFactory factory) : IClassF
         internal const string Output = "STUBBED";
 
         public string Convert(string input) => Output;
+
+        public bool TryConvert(
+            string? input,
+            [NotNullWhen(true)] out string? output,
+            [NotNullWhen(false)] out string? errorMessage)
+        {
+            output = Output;
+            errorMessage = null;
+            return true;
+        }
     }
 }

@@ -2,6 +2,7 @@ using IronSoftware.OldPhonePad;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OldPhonePad.Api.Contracts;
+using OldPhonePad.Api.ErrorHandling;
 
 namespace OldPhonePad.Api.Endpoints;
 
@@ -50,21 +51,34 @@ internal static class KeypadEndpoints
     /// Decodes one keypad message.
     /// </summary>
     /// <remarks>
-    /// Invalid keypad input throws, and <c>KeypadInputExceptionHandler</c> turns that into a 400.
-    /// Catching it here would repeat that translation at every endpoint.
+    /// <para>
+    /// Invalid keypad input is ordinary traffic for this endpoint rather than a fault, so it is
+    /// asked for as a value: <c>TryConvert</c> reports a rejection by returning false, and no
+    /// exception is raised on a path that is expected to be taken.
+    /// </para>
+    /// <para>
+    /// <c>KeypadInputExceptionHandler</c> still guards the pipeline. It now covers only what is
+    /// genuinely unforeseen - an unreadable request body, or a fault this code did not anticipate.
+    /// </para>
     /// </remarks>
     /// <param name="request">The keypad message to decode.</param>
     /// <param name="converter">
     /// Resolved from the container. The endpoint depends on the library's contract rather than its
     /// concrete type, so the API is wired the way a consuming application would wire it.
     /// </param>
-    private static Ok<DecodeResponse> Decode(
+    private static Results<Ok<DecodeResponse>, ProblemHttpResult> Decode(
         [FromBody] DecodeRequest request,
         IOldPhonePadConverter converter)
     {
         // Input is non-null here: the [Required] attribute on the contract rejects a missing
         // property before the endpoint runs.
-        string output = converter.Convert(request.Input!);
+        if (!converter.TryConvert(request.Input!, out string? output, out string? errorMessage))
+        {
+            return TypedResults.Problem(
+                detail: errorMessage,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: KeypadInputExceptionHandler.InvalidInputTitle);
+        }
 
         return TypedResults.Ok(new DecodeResponse(output));
     }

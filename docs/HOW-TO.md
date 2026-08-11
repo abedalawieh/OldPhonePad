@@ -67,7 +67,24 @@ Console.WriteLine(OldPhonePadConverter.Convert("4433555 555666#"));      // HELL
 Console.WriteLine(OldPhonePadConverter.Convert("8 88777444666*664#"));   // TURING
 ```
 
-Invalid input throws rather than guessing, so handle it where you accept it from a user:
+Where the input comes from a person, ask for the result rather than catching an exception:
+
+```csharp
+if (OldPhonePadConverter.TryConvert(userInput, out string? text, out string? errorMessage))
+{
+    Console.WriteLine(text);
+}
+else
+{
+    Console.Error.WriteLine(errorMessage);   // "Input must be terminated with the send key '#'."
+}
+```
+
+`TryConvert` never throws, including for `null`. A rejection is an expected result, so there is no
+exception to catch, nothing for a debugger to stop on, and the message is written to be shown to
+whoever typed the input.
+
+If you would rather a rejection be a failure you cannot ignore, `Convert` throws instead:
 
 ```csharp
 try

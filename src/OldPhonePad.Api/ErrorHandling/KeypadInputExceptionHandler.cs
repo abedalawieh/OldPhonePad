@@ -26,6 +26,12 @@ namespace OldPhonePad.Api.ErrorHandling;
 internal sealed class KeypadInputExceptionHandler(IProblemDetailsService problemDetailsService)
     : IExceptionHandler
 {
+    /// <summary>
+    /// The title used whenever the keypad rejects input, wherever that rejection is produced.
+    /// Shared so the endpoint and this handler cannot describe the same failure differently.
+    /// </summary>
+    internal const string InvalidInputTitle = "Invalid keypad input";
+
     /// <summary>Marks the end of an <see cref="ArgumentException"/> message, which .NET appends the parameter name to.</summary>
     private const string ParameterNameSuffix = " (Parameter '";
 
@@ -66,7 +72,7 @@ internal sealed class KeypadInputExceptionHandler(IProblemDetailsService problem
         // The keypad library rejected the input.
         ArgumentException invalidInput => new ClientError(
             StatusCodes.Status400BadRequest,
-            "Invalid keypad input",
+            InvalidInputTitle,
             DescribeWithoutParameterName(invalidInput)),
 
         // The request never became a DecodeRequest: unreadable JSON, or a body that was absent

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace IronSoftware.OldPhonePad;
 
 /// <summary>
@@ -38,4 +40,24 @@ public interface IOldPhonePadConverter
     /// keypad. The exception message identifies the offending character and its position.
     /// </exception>
     string Convert(string input);
+
+    /// <summary>
+    /// Decodes a complete old phone keypad message into text, reporting invalid input by
+    /// returning <see langword="false"/> rather than by throwing.
+    /// </summary>
+    /// <param name="input">The key presses to decode, terminated by the send key <c>#</c>.</param>
+    /// <param name="output">
+    /// The decoded text when this method returns <see langword="true"/>; otherwise
+    /// <see langword="null"/>.
+    /// </param>
+    /// <param name="errorMessage">
+    /// An explanation of why the input was rejected when this method returns
+    /// <see langword="false"/>; otherwise <see langword="null"/>.
+    /// </param>
+    /// <returns><see langword="true"/> if the input was decoded; otherwise <see langword="false"/>.</returns>
+    /// <remarks>
+    /// Prefer this where invalid input is ordinary traffic rather than a fault. It never throws,
+    /// including for <see langword="null"/> input.
+    /// </remarks>
+    bool TryConvert(string? input, [NotNullWhen(true)] out string? output, [NotNullWhen(false)] out string? errorMessage);
 }
